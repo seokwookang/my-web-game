@@ -17,30 +17,38 @@
         #score-display { font-size: 20px; margin-bottom: 5px; color: #fff; }
         #stage-display { font-size: 16px; margin-bottom: 5px; color: #ffd700; }
         #hearts-display { font-size: 18px; margin-bottom: 5px; letter-spacing: 2px; }
-        .gauge-bg { width: 150px; height: 12px; background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 6px; overflow: hidden; }
-        #ult-gauge { width: 0%; height: 100%; background: linear-gradient(90deg, #ff416c, #ff4b2b); transition: width 0.1s; }
 
-        /* 터치 버그 수정 및 반응성 최적화 */
         #btn-home { pointer-events: auto; background: rgba(0,0,0,0.5); border: 2px solid #fff; color: #fff; padding: 8px 15px; border-radius: 20px; font-weight: bold; height: fit-content; cursor: pointer; z-index: 10; }
         #btn-home:active { transform: scale(0.9); background: rgba(255,255,255,0.3); }
 
         #stage-alert { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: #ffd700; text-shadow: 0 0 15px #ff0000; font-style: italic; font-weight: bold; opacity: 0; transition: opacity 0.5s; pointer-events: none; z-index: 10; text-align: center;}
 
-        /* 투명도 대폭 증가로 몬스터 식별 용이하게 변경 */
         #controller { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 15px; z-index: 5; pointer-events: none; }
-        .btn { pointer-events: auto; width: 65px; height: 65px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn:active, .btn.active { background: rgba(255,255,255,0.3); transform: scale(0.9); }
-        .btn-ult { border-color: rgba(255,51,51,0.5); color: #ff9999; }
-        .btn-ult.ready { background: radial-gradient(circle, rgba(255,51,51,0.8), rgba(139,0,0,0.8)); color: white; box-shadow: 0 0 15px red; animation: pulse 0.8s infinite alternate; border-color: #ff3333; }
+        .btn { pointer-events: auto; width: 65px; height: 65px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden; position: relative; transition: transform 0.1s;}
+        .btn:active, .btn.active { transform: scale(0.9); }
+        
+        .btn-ult { 
+            --fill: 0%; 
+            background: linear-gradient(to top, rgba(255,51,51,0.7) var(--fill), rgba(255,255,255,0.05) var(--fill)) !important; 
+            border-color: rgba(255,51,51,0.5); 
+            color: #ff9999; 
+            transition: --fill 0.2s ease-in-out;
+        }
+        .btn-ult.ready { 
+            box-shadow: 0 0 15px red, inset 0 0 10px rgba(255,0,0,0.5); 
+            border-color: #ff3333; 
+            color: white; 
+            text-shadow: 0 0 5px #fff;
+            animation: pulse 0.8s infinite alternate; 
+        }
 
-        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); box-shadow: 0 0 25px red, inset 0 0 15px rgba(255,0,0,0.8); } }
 
         #joystick-zone { position: absolute; top: 0; left: 0; width: 50%; height: 100%; z-index: 4; }
 
         .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 50, 80, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20; backdrop-filter: blur(5px); }
         .overlay-screen h1 { font-size: 2.2rem; text-shadow: 0 0 15px #ffd700; margin-bottom: 10px; color: #ffd700; text-align: center; line-height: 1.2;}
         
-        /* 랭킹 보드 UI 고도화 */
         .rank-board { background: rgba(0,0,0,0.5); border: 2px solid #00d2ff; padding: 10px 20px; border-radius: 10px; margin-bottom: 20px; width: 280px; text-align: center; }
         .rank-board h3 { margin: 0 0 10px 0; color: #00d2ff; }
         .rank-board ol { margin: 0; padding-left: 20px; text-align: left; font-size: 14px; }
@@ -73,9 +81,7 @@
             <div class="ui-left">
                 <div id="stage-display">STAGE 1</div>
                 <div id="score-display">SCORE: 0</div>
-                <div id="hearts-display">❤️❤️❤️</div>
-                <div style="font-size:12px; margin-bottom:3px; margin-top:5px;">ULTIMATE</div>
-                <div class="gauge-bg"><div id="ult-gauge"></div></div>
+                <div id="hearts-display">❤️❤️❤️❤️❤️</div>
             </div>
             <button id="btn-home">메인 메뉴</button>
         </div>
@@ -128,10 +134,25 @@
 </div>
 
 <script>
+    // ==========================================
+    // ⚙️ 게임 밸런스 및 난이도 설정 (CONFIG)
+    // ==========================================
+    const CONFIG = {
+        baseRequiredKills: 5,       
+        baseBossHp: 3,              
+        baseBossBullets: 2,         
+        difficultyMultiplier: 1.2,  
+        playerStartHp: 5,           
+        stageForHpIncrease: 5,      
+        ultKillRequirement: 5,      
+        kenjiUltDamage: 3,          
+        appleDropRate: 0.20         
+    };
+    // ==========================================
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
-    // 외부 이미지 설정부 (비워두면 도형으로 대체됨)
     const imgA = new Image(); imgA.src = ''; 
     const imgB = new Image(); imgB.src = ''; 
     const imgBoss = new Image(); imgBoss.src = ''; 
@@ -141,18 +162,17 @@
         gameover: document.getElementById('game-over-screen'), gameUI: document.getElementById('ui-layer'),
         ctrl: document.getElementById('controller'), score: document.getElementById('score-display'),
         stage: document.getElementById('stage-display'), hearts: document.getElementById('hearts-display'),
-        ult: document.getElementById('ult-gauge'), btnUlt: document.getElementById('btn-ult'),
+        btnUlt: document.getElementById('btn-ult'),
         stageAlert: document.getElementById('stage-alert'), finalScore: document.getElementById('final-score'),
         confirm: document.getElementById('confirm-modal'), rankList: document.getElementById('rank-list')
     };
 
-    // --- 랭킹 시스템 V2 (캐릭터 기록 추가) ---
     function saveRank(newScore, charType) {
         if(newScore === 0) return;
         let ranks = JSON.parse(localStorage.getItem('brawlKirbyRanksV2')) || [];
         ranks.push({score: newScore, char: charType});
         ranks.sort((a, b) => b.score - a.score);
-        ranks = ranks.slice(0, 5); // 상위 5개 유지
+        ranks = ranks.slice(0, 5); 
         localStorage.setItem('brawlKirbyRanksV2', JSON.stringify(ranks));
     }
 
@@ -202,6 +222,8 @@
     let gameState = 'START'; 
     let score = 0, stage = 1, frameCount = 0, cameraX = 0, animId;
     let bossActive = false;
+    let stageKillCount = 0; 
+    let requiredKills = CONFIG.baseRequiredKills;
     const input = { jump: false, attack: false, ult: false };
 
     function drawBackground(ctx, w, h) {
@@ -230,20 +252,21 @@
         constructor(type) {
             this.type = type; this.w = 40; this.h = 40; this.worldX = 200; this.y = canvas.height - this.h - 45;
             this.vx = 0; this.vy = 0; this.speed = 6.5; this.jumpForce = -16; this.gravity = 0.85;
-            this.grounded = false; this.aimAngle = 0; this.hp = 3; this.maxHp = 5;
-            this.invincibility = 0; this.atkCooldown = 0; this.ultGauge = 0; this.maxUltGauge = 100;
+            this.grounded = false; this.aimAngle = 0; 
+            
+            this.maxHp = CONFIG.playerStartHp; this.hp = this.maxHp;
+            
+            this.invincibility = 0; this.atkCooldown = 0; 
+            this.ultGauge = 0; this.maxUltGauge = 100; 
             this.dashInvincibility = false; this.attackAnimTimer = 0; 
         }
         update() {
-            if (this.dashInvincibility) {
-                // 켄지 궁극기 지속중 (컨트롤 무시)
-            } else {
+            if (this.dashInvincibility) {} else {
                 if (joy.active) { this.vx = joy.normX * this.speed; this.aimAngle = joy.angle; } 
                 else { this.vx *= 0.8; if (Math.abs(this.vx) > 0.5) this.aimAngle = this.vx > 0 ? 0 : Math.PI; }
             }
 
             if (input.jump && this.grounded && !this.dashInvincibility) { this.vy = this.jumpForce; this.grounded = false; playSound('jump'); }
-            
             if (!this.dashInvincibility) this.vy += this.gravity; 
             
             this.worldX += this.vx; this.y += this.vy;
@@ -272,7 +295,8 @@
             if (this.type === 'A') {
                 projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'base_A'));
             } else {
-                hitboxes.push(new Hitbox(this, 140, 140, 15, 'base'));
+                // 켄지 기본 공격: 원뿔 형태 (반지름 120, 지속시간 15, 일반 대미지 1)
+                hitboxes.push(new Hitbox(this, 120, 15, 'base', 1));
                 particles.push(new Particle(this, 0, 'slash', this.aimAngle));
             }
         }
@@ -284,17 +308,16 @@
                 this.dashInvincibility = true; 
                 this.vy = Math.sin(this.aimAngle) * 45;
                 this.vx = Math.cos(this.aimAngle) * 45;
-                // 켄지 궁극기 밸런싱: 500ms(화면 끝) -> 250ms(화면 절반)으로 조정 완료
                 setTimeout(() => { this.dashInvincibility = false; }, 250); 
-                hitboxes.push(new Hitbox(this, 300, 300, 15, 'ult')); // 판정 크기 및 유지시간 조정
+                // 켄지 궁극기 판정: 원뿔 형태 (반지름 300, 궁극기 대미지 3)
+                hitboxes.push(new Hitbox(this, 300, 15, 'ult', CONFIG.kenjiUltDamage)); 
             }
         }
         takeDamage() {
             if (this.invincibility > 0 || this.dashInvincibility) return;
             this.hp--; playSound('hit'); this.invincibility = 60; updateUI();
             if (this.hp <= 0) { 
-                gameState = 'GAMEOVER'; 
-                saveRank(score, this.type); // 게임오버 시 캐릭터 타입과 함께 랭킹 저장
+                gameState = 'GAMEOVER'; saveRank(score, this.type); 
                 ui.finalScore.innerText = `최종 점수: ${score}점`; 
                 ui.gameover.style.display = 'flex'; ui.ctrl.style.display = 'none'; joy.active = false; 
             }
@@ -331,18 +354,18 @@
         }
     }
 
+    // 켄지 공격 로직 전용 Hitbox (반지름 기반)
     class Hitbox {
-        constructor(owner, w, h, duration, type) { 
-            this.owner = owner; this.w = w; this.h = h; this.duration = duration; this.type = type;
-            this.active = true; this.hitEnemies = []; this.updatePos();
-        }
-        updatePos() {
-            let dist = this.type === 'ult' ? 0 : 50;
-            this.worldX = this.owner.worldX + this.owner.w/2 + Math.cos(this.owner.aimAngle)*dist - this.w/2;
-            this.y = this.owner.y + this.owner.h/2 + Math.sin(this.owner.aimAngle)*dist - this.h/2;
+        constructor(owner, radius, duration, type, damage) { 
+            this.owner = owner; 
+            this.radius = radius; 
+            this.duration = duration; 
+            this.type = type;
+            this.damage = damage; 
+            this.active = true; 
+            this.hitEnemies = []; 
         }
         update() { 
-            this.updatePos();
             this.duration--; if (this.duration <= 0) this.active = false; 
         }
         draw(ctx) {} 
@@ -350,16 +373,27 @@
 
     class Boss {
         constructor() {
-            this.w = 80 + (stage * 20); this.h = 80 + (stage * 20);
+            let calculatedSize = 80 * Math.pow(CONFIG.difficultyMultiplier, stage - 1);
+            let maxSize = canvas.height * 0.5;
+            this.w = Math.min(maxSize, calculatedSize); 
+            this.h = this.w;
+
             this.worldX = cameraX + canvas.width + 100; this.y = 50;
-            this.maxHp = Math.max(2, Math.floor(stage * 1.5)); 
+            
+            this.maxHp = Math.floor(CONFIG.baseBossHp * Math.pow(CONFIG.difficultyMultiplier, stage - 1)); 
             this.hp = this.maxHp;
             this.active = true; 
-            this.vx = 0; this.vy = 0.5 + (stage * 0.1); this.speed = 1;
+            
+            this.vx = 0; this.vy = 0.5 * Math.pow(CONFIG.difficultyMultiplier, stage - 1); 
+            this.speed = 1.0 * Math.pow(CONFIG.difficultyMultiplier, stage - 1);
+            
             this.attackTimer = 0; this.isHit = 0;
+            this.facingRight = false; 
             bossActive = true;
         }
         update() {
+            this.facingRight = player.worldX > this.worldX;
+
             let targetX = cameraX + canvas.width - this.w - 50;
             if (this.worldX > targetX) this.worldX -= this.speed;
             
@@ -369,13 +403,19 @@
             if (this.isHit > 0) this.isHit--;
 
             this.attackTimer++;
-            let fireRate = Math.max(100, 200 - (stage * 20)); 
+            let fireRate = Math.max(30, 150 * Math.pow(1 / CONFIG.difficultyMultiplier, stage - 1)); 
+            
             if (this.attackTimer > fireRate) {
                 this.attackTimer = 0; playSound('boss_hit');
-                let baseAngle = Math.PI; 
+                let baseAngle = this.facingRight ? 0 : Math.PI; 
                 let spread = 0.4; 
-                for(let i = -1; i <= 1; i++) {
-                    enemyProjectiles.push(new Projectile(this.worldX, this.y + this.h/2, baseAngle + i*spread, 'boss_atk'));
+
+                let bulletCount = Math.floor(CONFIG.baseBossBullets * Math.pow(CONFIG.difficultyMultiplier, stage - 1));
+                let startOffset = -(bulletCount - 1) / 2 * spread; 
+
+                for (let i = 0; i < bulletCount; i++) {
+                    let angleOffset = startOffset + (i * spread);
+                    enemyProjectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, baseAngle + angleOffset, 'boss_atk'));
                 }
             }
         }
@@ -383,15 +423,33 @@
             this.hp -= dmg; this.isHit = 5; playSound('boss_hit');
             if (this.hp <= 0) {
                 this.active = false; bossActive = false;
-                score += 200; player.heal();
+                score += 200; 
+                
+                // === [업데이트 1] 보스 사망 시 모든 탄환 즉각 소멸 ===
+                enemyProjectiles = []; 
+                
+                stage++;
+                stageKillCount = 0;
+                requiredKills = Math.floor(CONFIG.baseRequiredKills * Math.pow(CONFIG.difficultyMultiplier, stage - 1)); 
+
+                if ((stage - 1) % CONFIG.stageForHpIncrease === 0) {
+                    player.maxHp++;
+                    player.hp++; 
+                } else {
+                    player.heal(); 
+                }
+
                 for(let i=0; i<30; i++) particles.push(new Particle(this.worldX+this.w/2, this.y+this.h/2, 'exp', 0));
-                ui.stageAlert.innerText = `STAGE CLEAR!`; ui.stageAlert.style.color = '#00ff00';
+                ui.stageAlert.innerText = `STAGE ${stage-1} CLEAR!`; ui.stageAlert.style.color = '#00ff00';
                 ui.stageAlert.style.opacity = 1; setTimeout(() => { ui.stageAlert.style.opacity = 0; ui.stageAlert.style.color = '#ffd700'; }, 3000);
+                updateUI();
             }
         }
         draw(ctx) {
             let screenX = this.worldX - cameraX;
             ctx.save(); ctx.translate(screenX + this.w/2, this.y + this.h/2);
+            ctx.scale(this.facingRight ? -1 : 1, 1);
+
             if (imgBoss.complete && imgBoss.naturalWidth > 0) {
                 ctx.globalAlpha = this.isHit > 0 ? 0.5 : 1; ctx.drawImage(imgBoss, -this.w/2, -this.h/2, this.w, this.h);
             } else {
@@ -401,6 +459,8 @@
                 ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(-25, -10); ctx.lineTo(-5, 0); ctx.lineTo(-25, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(25, -10); ctx.lineTo(5, 0); ctx.lineTo(25, 10); ctx.fill();
                 ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(-15, 0, 5, 0, Math.PI*2); ctx.arc(15, 0, 5, 0, Math.PI*2); ctx.fill();
             }
+            
+            ctx.scale(this.facingRight ? -1 : 1, 1);
             ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w, 10);
             ctx.fillStyle = '#ff3333'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w * (this.hp / this.maxHp), 10);
             ctx.restore();
@@ -410,7 +470,7 @@
     class Projectile {
         constructor(x, y, angle, type) {
             this.worldX = x; this.y = y; this.angle = angle; this.type = type;
-            this.startX = x; // 다크메타 사거리 너프를 위한 시작 좌표 저장
+            this.startX = x; 
             let speed = type === 'ult_A' ? 14 : (type === 'boss_atk' ? 3 + (stage*0.5) : 11);
             this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
             this.w = type === 'ult_A' ? 50 : (type === 'boss_atk' ? 20 : 35); this.h = this.w; this.active = true;
@@ -418,7 +478,6 @@
         update() {
             this.worldX += this.vx; this.y += this.vy;
             
-            // 다크메타 검기 사거리 제한: 화면 너비 절반까지만 날아감
             if (this.type === 'base_A' || this.type === 'ult_A') {
                 let distanceTraveled = Math.sqrt(Math.pow(this.worldX - this.startX, 2));
                 if (distanceTraveled > canvas.width / 2) {
@@ -447,7 +506,8 @@
 
     class Enemy {
         constructor() {
-            let baseSpeed = 0.5 + (stage * 0.2); let rand = Math.random();
+            let baseSpeed = (0.8 + Math.random() * 0.4) * Math.pow(CONFIG.difficultyMultiplier, stage - 1);
+            let rand = Math.random();
             if (stage === 1) this.type = 0; else if (stage === 2) this.type = rand < 0.7 ? 0 : 2; else this.type = rand < 0.4 ? 0 : (rand < 0.7 ? 2 : 1);
             this.worldX = cameraX + canvas.width + 50; this.active = true;
             if (this.type === 0) { this.w = 35; this.h = 30; this.y = canvas.height - 45 - this.h; this.vx = -baseSpeed; }
@@ -515,7 +575,10 @@
             if (this.type === 'slash') {
                 ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle);
                 ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-                ctx.beginPath(); ctx.arc(0, 0, 60, -Math.PI/2, Math.PI/2); ctx.stroke(); ctx.restore();
+                ctx.beginPath(); 
+                // === [업데이트 2] 켄지 이펙트: 정확히 120도 (-60도 ~ +60도) 원호 그리기 ===
+                ctx.arc(0, 0, 60, -Math.PI/3, Math.PI/3); 
+                ctx.stroke(); ctx.restore();
             } else if (this.type === 'afterimage') {
                 ctx.save(); ctx.translate(screenX + 20, this.y + 20); if (Math.cos(this.angle) < 0) ctx.scale(-1, 1);
                 ctx.globalAlpha = (this.life / this.maxLife) * 0.6; ctx.fillStyle = '#ff4b2b';
@@ -533,12 +596,12 @@
         player = new Player(charType);
         projectiles = []; enemyProjectiles = []; hitboxes = []; enemies = []; items = []; particles = []; boss = null; bossActive = false;
         score = 0; stage = 1; cameraX = 0; frameCount = 0; gameState = 'PLAYING'; joy.active = false;
+        stageKillCount = 0; requiredKills = CONFIG.baseRequiredKills; 
         ui.start.style.display = 'none'; ui.gameover.style.display = 'none'; ui.confirm.style.display = 'none';
         ui.ctrl.style.display = 'flex'; ui.gameUI.style.display = 'flex';
         updateUI(); gameLoop();
     }
 
-    // 터치 버그 완벽 수정을 위한 click 및 touchstart 동시 할당 (e.preventDefault()로 중복방지)
     const handleHomeBtn = (e) => { e.preventDefault(); if(gameState === 'PLAYING') { gameState = 'PAUSED'; joy.active = false; ui.confirm.style.display = 'block'; } };
     document.getElementById('btn-home').addEventListener('touchstart', handleHomeBtn, {passive: false});
     document.getElementById('btn-home').addEventListener('mousedown', handleHomeBtn);
@@ -555,34 +618,67 @@
     document.getElementById('btn-retry').addEventListener('touchstart', handleRetry, {passive: false});
     document.getElementById('btn-retry').addEventListener('mousedown', handleRetry);
 
+    // === [업데이트 2] 켄지 타격 판정: 120도 부채꼴 각도 검사 로직 추가 ===
+    function isConeCollide(h, target) {
+        let tx = target.worldX + (target.w || 20) / 2;
+        let ty = target.y + (target.h || 20) / 2;
+        let ox = h.owner.worldX + h.owner.w / 2;
+        let oy = h.owner.y + h.owner.h / 2;
+        
+        let dx = tx - ox;
+        let dy = ty - oy;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // 사거리(반지름) 안에 들어오는지 확인 (적의 절반 크기만큼 여유 범위 제공)
+        if (dist <= h.radius + (target.w || 20) / 2) {
+            let angleToEnemy = Math.atan2(dy, dx);
+            let angleDiff = Math.abs(angleToEnemy - h.owner.aimAngle);
+            
+            // 360도를 넘어가는 각도 차이 보정
+            while (angleDiff > Math.PI) angleDiff = (2 * Math.PI) - angleDiff;
+            
+            // 시야각이 양옆으로 60도 (총 120도) 이내에 있는지 확인
+            if (angleDiff <= Math.PI / 3) {
+                return true; 
+            }
+        }
+        return false;
+    }
+
+    function isCollide(r1, r2) { let r1w = r1.w||20, r1h = r1.h||20, r2w = r2.w||20, r2h = r2.h||20; return r1.worldX < r2.worldX + r2w && r1.worldX + r1w > r2.worldX && r1.y < r2.y + r2h && r1.h + r1.y > r2.y; }
 
     function checkCollisions() {
         const killEnemy = (e) => {
             e.active = false; score += 50; playSound('hit');
-            player.ultGauge = Math.min(player.maxUltGauge, player.ultGauge + 15);
+            stageKillCount++;
+            
+            let ultChargeAmount = 100 / CONFIG.ultKillRequirement; 
+            player.ultGauge = Math.min(player.maxUltGauge, player.ultGauge + ultChargeAmount); 
+            
             for(let i=0; i<6; i++) particles.push(new Particle(e.worldX, e.y, 'exp', 0));
-            // 사과 드랍률 20%로 안정화
-            if(Math.random() < 0.20) items.push(new Item(e.worldX, e.y)); 
+            if(Math.random() < CONFIG.appleDropRate) items.push(new Item(e.worldX, e.y)); 
         };
 
+        // 다크메타 (투사체) 충돌
         projectiles.forEach(p => {
             enemies.forEach(e => { if (p.active && e.active && isCollide(p, e)) { killEnemy(e); p.active = false; }});
             if (p.active && bossActive && boss.active && isCollide(p, boss)) { boss.takeDamage(1); p.active = false; }
         });
 
+        // 켄지 (120도 부채꼴 Hitbox) 충돌
         hitboxes.forEach(h => {
             enemies.forEach(e => {
-                if (h.active && e.active && isCollide(h, e) && !h.hitEnemies.includes(e)) {
+                if (h.active && e.active && isConeCollide(h, e) && !h.hitEnemies.includes(e)) {
                     h.hitEnemies.push(e); killEnemy(e);
                 }
             });
-            if (h.active && bossActive && boss.active && isCollide(h, boss) && !h.hitEnemies.includes(boss)) {
-                h.hitEnemies.push(boss); boss.takeDamage(1);
+            if (h.active && bossActive && boss.active && isConeCollide(h, boss) && !h.hitEnemies.includes(boss)) {
+                h.hitEnemies.push(boss); boss.takeDamage(h.damage); 
             }
         });
 
-        if (score >= stage * 500 && !bossActive) {
-            stage++; boss = new Boss(); enemies = []; 
+        if (stageKillCount >= requiredKills && !bossActive) {
+            boss = new Boss(); enemies = []; 
             ui.stageAlert.innerText = `WARNING: BOSS APPROACHING!`; ui.stageAlert.style.color = '#ff0000';
             ui.stageAlert.style.opacity = 1; setTimeout(() => { ui.stageAlert.style.opacity = 0; }, 2000);
         }
@@ -593,12 +689,14 @@
         items.forEach(i => { if (i.active && isCollide(player, i)) { i.active = false; player.heal(); }});
     }
 
-    function isCollide(r1, r2) { let r1w = r1.w||20, r1h = r1.h||20, r2w = r2.w||20, r2h = r2.h||20; return r1.worldX < r2.worldX + r2w && r1.worldX + r1w > r2.worldX && r1.y < r2.y + r2h && r1.h + r1.y > r2.y; }
-
     function updateUI() {
-        ui.score.innerText = `SCORE: ${score}`; ui.stage.innerText = `STAGE ${stage}`;
-        ui.hearts.innerText = '❤️'.repeat(player.hp) + '🖤'.repeat(player.maxHp - player.hp);
-        ui.ult.style.width = `${(player.ultGauge / player.maxUltGauge) * 100}%`;
+        ui.score.innerText = `SCORE: ${score}`; 
+        ui.stage.innerText = `STAGE ${stage} (처치: ${stageKillCount}/${requiredKills})`; 
+        ui.hearts.innerText = '❤️'.repeat(player.hp) + '♡'.repeat(player.maxHp - player.hp); 
+        
+        let ultPercent = (player.ultGauge / player.maxUltGauge) * 100;
+        ui.btnUlt.style.setProperty('--fill', `${ultPercent}%`);
+        
         player.ultGauge >= player.maxUltGauge ? ui.btnUlt.classList.add('ready') : ui.btnUlt.classList.remove('ready');
     }
 
@@ -609,7 +707,7 @@
         player.update(); player.draw(ctx);
         if (bossActive && boss.active) { boss.update(); boss.draw(ctx); }
 
-        let spawnRate = Math.max(40, 100 - (stage * 10));
+        let spawnRate = Math.max(20, Math.floor(100 * Math.pow(1 / CONFIG.difficultyMultiplier, stage - 1))); 
         if (!bossActive && frameCount % spawnRate === 0) enemies.push(new Enemy());
 
         [projectiles, enemyProjectiles, hitboxes, enemies, particles, items].forEach(arr => {
