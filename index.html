@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>별의 커비 Vs 브롤 스타즈</title>
+    <style>
+        * { box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #87CEEB; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        
+        #game-container { display: flex; flex-direction: column; width: 100%; height: 100%; position: relative; }
+        #canvas-wrapper { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        #ui-layer { position: absolute; top: 10px; left: 15px; pointer-events: none; color: #fff; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 5; display: flex; justify-content: space-between; width: calc(100% - 30px); }
+        .ui-left { display: flex; flex-direction: column; }
+        #score-display { font-size: 20px; margin-bottom: 5px; color: #fff; }
+        #stage-display { font-size: 16px; margin-bottom: 5px; color: #ffd700; }
+        #hearts-display { font-size: 18px; margin-bottom: 5px; letter-spacing: 2px; }
+        .gauge-bg { width: 150px; height: 12px; background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 6px; overflow: hidden; }
+        #ult-gauge { width: 0%; height: 100%; background: linear-gradient(90deg, #ff416c, #ff4b2b); transition: width 0.1s; }
+
+        /* 터치 버그 수정 및 반응성 최적화 */
+        #btn-home { pointer-events: auto; background: rgba(0,0,0,0.5); border: 2px solid #fff; color: #fff; padding: 8px 15px; border-radius: 20px; font-weight: bold; height: fit-content; cursor: pointer; z-index: 10; }
+        #btn-home:active { transform: scale(0.9); background: rgba(255,255,255,0.3); }
+
+        #stage-alert { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: #ffd700; text-shadow: 0 0 15px #ff0000; font-style: italic; font-weight: bold; opacity: 0; transition: opacity 0.5s; pointer-events: none; z-index: 10; text-align: center;}
+
+        /* 투명도 대폭 증가로 몬스터 식별 용이하게 변경 */
+        #controller { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 15px; z-index: 5; pointer-events: none; }
+        .btn { pointer-events: auto; width: 65px; height: 65px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn:active, .btn.active { background: rgba(255,255,255,0.3); transform: scale(0.9); }
+        .btn-ult { border-color: rgba(255,51,51,0.5); color: #ff9999; }
+        .btn-ult.ready { background: radial-gradient(circle, rgba(255,51,51,0.8), rgba(139,0,0,0.8)); color: white; box-shadow: 0 0 15px red; animation: pulse 0.8s infinite alternate; border-color: #ff3333; }
+
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+
+        #joystick-zone { position: absolute; top: 0; left: 0; width: 50%; height: 100%; z-index: 4; }
+
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 50, 80, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20; backdrop-filter: blur(5px); }
+        .overlay-screen h1 { font-size: 2.2rem; text-shadow: 0 0 15px #ffd700; margin-bottom: 10px; color: #ffd700; text-align: center; line-height: 1.2;}
+        
+        /* 랭킹 보드 UI 고도화 */
+        .rank-board { background: rgba(0,0,0,0.5); border: 2px solid #00d2ff; padding: 10px 20px; border-radius: 10px; margin-bottom: 20px; width: 280px; text-align: center; }
+        .rank-board h3 { margin: 0 0 10px 0; color: #00d2ff; }
+        .rank-board ol { margin: 0; padding-left: 20px; text-align: left; font-size: 14px; }
+        .rank-board li { margin-bottom: 5px; color: #ccc; }
+
+        .char-select-container { display: flex; gap: 15px; }
+        .char-card { background: rgba(0,0,0,0.4); border: 3px solid #aaa; padding: 15px; border-radius: 15px; text-align: center; width: 220px; cursor: pointer; transition: 0.2s; }
+        .char-card:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+        .char-card h2 { margin: 5px 0; font-size: 18px; }
+        .char-card p { font-size: 13px; color: #ccc; margin-top: 5px; }
+        
+        #btn-fullscreen { padding: 12px 25px; font-size: 18px; background: #fff; color: #143250; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+
+        #confirm-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); border: 2px solid #fff; padding: 30px; border-radius: 15px; z-index: 30; text-align: center; color: white; }
+        .modal-btns { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
+        .modal-btn { padding: 10px 25px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .btn-yes { background: #e74c3c; color: white; } .btn-no { background: #bdc3c7; color: black; }
+        
+        #game-over-screen { display: none; background: rgba(0,0,0,0.85); flex-direction: column; position: absolute; top:0; left:0; width:100%; height:100%; z-index:15; justify-content: center; align-items: center; color: white; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="canvas-wrapper">
+        <canvas id="gameCanvas"></canvas>
+        <div id="joystick-zone"></div>
+        
+        <div id="ui-layer" style="display:none;">
+            <div class="ui-left">
+                <div id="stage-display">STAGE 1</div>
+                <div id="score-display">SCORE: 0</div>
+                <div id="hearts-display">❤️❤️❤️</div>
+                <div style="font-size:12px; margin-bottom:3px; margin-top:5px;">ULTIMATE</div>
+                <div class="gauge-bg"><div id="ult-gauge"></div></div>
+            </div>
+            <button id="btn-home">메인 메뉴</button>
+        </div>
+        
+        <div id="stage-alert"></div>
+
+        <div id="intro-screen" class="overlay-screen">
+            <h1>별의 커비<br>Vs 브롤 스타즈</h1>
+            <button id="btn-fullscreen">화면 터치하여 시작</button>
+        </div>
+
+        <div id="start-screen" class="overlay-screen" style="display:none;">
+            <div class="rank-board">
+                <h3>🏆 TOP 5 명예의 전당</h3>
+                <ol id="rank-list"><li>기록 없음</li></ol>
+            </div>
+            <div class="char-select-container">
+                <div class="char-card" id="btn-char-a">
+                    <h2>🦇 다크메타</h2>
+                    <p>반달 검기 (중거리 사거리)</p>
+                </div>
+                <div class="char-card" id="btn-char-b" style="border-color: #ff4b2b;">
+                    <h2>🍣 켄지</h2>
+                    <p>광역 베기 (절반 대시)</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="confirm-modal">
+            <h2>메인 메뉴로 돌아가시겠습니까?</h2>
+            <p>현재 진행 상황이 사라집니다.</p>
+            <div class="modal-btns">
+                <button class="modal-btn btn-yes" id="btn-confirm-yes">예</button>
+                <button class="modal-btn btn-no" id="btn-confirm-no">아니오</button>
+            </div>
+        </div>
+
+        <div id="game-over-screen">
+            <h1 style="color:#ff3333; font-size: 50px; margin-bottom: 10px;">GAME OVER</h1>
+            <p id="final-score" style="font-size: 24px; margin-bottom: 30px;">SCORE: 0</p>
+            <button class="btn" id="btn-retry" style="width: 150px; height: 50px; border-radius: 25px;">메인 메뉴로</button>
+        </div>
+    </div>
+
+    <div id="controller" style="display:none;">
+        <div class="btn" id="btn-jump">JUMP</div>
+        <div class="btn" id="btn-atk">ATK</div>
+        <div class="btn btn-ult" id="btn-ult">ULT</div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // 외부 이미지 설정부 (비워두면 도형으로 대체됨)
+    const imgA = new Image(); imgA.src = ''; 
+    const imgB = new Image(); imgB.src = ''; 
+    const imgBoss = new Image(); imgBoss.src = ''; 
+
+    const ui = {
+        intro: document.getElementById('intro-screen'), start: document.getElementById('start-screen'),
+        gameover: document.getElementById('game-over-screen'), gameUI: document.getElementById('ui-layer'),
+        ctrl: document.getElementById('controller'), score: document.getElementById('score-display'),
+        stage: document.getElementById('stage-display'), hearts: document.getElementById('hearts-display'),
+        ult: document.getElementById('ult-gauge'), btnUlt: document.getElementById('btn-ult'),
+        stageAlert: document.getElementById('stage-alert'), finalScore: document.getElementById('final-score'),
+        confirm: document.getElementById('confirm-modal'), rankList: document.getElementById('rank-list')
+    };
+
+    // --- 랭킹 시스템 V2 (캐릭터 기록 추가) ---
+    function saveRank(newScore, charType) {
+        if(newScore === 0) return;
+        let ranks = JSON.parse(localStorage.getItem('brawlKirbyRanksV2')) || [];
+        ranks.push({score: newScore, char: charType});
+        ranks.sort((a, b) => b.score - a.score);
+        ranks = ranks.slice(0, 5); // 상위 5개 유지
+        localStorage.setItem('brawlKirbyRanksV2', JSON.stringify(ranks));
+    }
+
+    function updateRankBoard() {
+        let ranks = JSON.parse(localStorage.getItem('brawlKirbyRanksV2')) || [];
+        if(ranks.length === 0) { ui.rankList.innerHTML = "<li>아직 도전자가 없습니다!</li>"; return; }
+        ui.rankList.innerHTML = ranks.map((r, index) => {
+            let charName = r.char === 'A' ? '🦇 다크메타' : '🍣 켄지';
+            return `<li>${index + 1}위 : ${r.score}점 (${charName})</li>`;
+        }).join('');
+    }
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx;
+    function initAudio() { if (!audioCtx) audioCtx = new AudioContext(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
+    function playSound(type) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+        if (type === 'jump') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.1); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+        else if (type === 'hit') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.1); gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+        else if (type === 'atk') { osc.type = 'square'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(400, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+        else if (type === 'boss_hit') { osc.type = 'square'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.2); gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2); osc.start(now); osc.stop(now + 0.2); }
+    }
+
+    document.getElementById('btn-fullscreen').addEventListener('click', () => {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+        initAudio(); ui.intro.style.display = 'none'; updateRankBoard(); ui.start.style.display = 'flex';
+    });
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+    const joyZone = document.getElementById('joystick-zone');
+    const joy = { active: false, baseX: 0, baseY: 0, stickX: 0, stickY: 0, angle: 0, normX: 0, normY: 0 };
+    joyZone.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.changedTouches[0]; joy.active = true; joy.baseX = t.clientX; joy.baseY = t.clientY; joy.stickX = t.clientX; joy.stickY = t.clientY; joy.normX = 0; joy.normY = 0; }, {passive: false});
+    joyZone.addEventListener('touchmove', (e) => {
+        e.preventDefault(); if(!joy.active) return; const t = e.changedTouches[0];
+        let dx = t.clientX - joy.baseX, dy = t.clientY - joy.baseY, dist = Math.sqrt(dx*dx + dy*dy), maxR = 50;
+        joy.angle = Math.atan2(dy, dx);
+        if (dist > maxR) { joy.stickX = joy.baseX + Math.cos(joy.angle) * maxR; joy.stickY = joy.baseY + Math.sin(joy.angle) * maxR; }
+        else { joy.stickX = t.clientX; joy.stickY = t.clientY; }
+        joy.normX = Math.cos(joy.angle) * Math.min(dist/maxR, 1); joy.normY = Math.sin(joy.angle) * Math.min(dist/maxR, 1);
+    }, {passive: false});
+    joyZone.addEventListener('touchend', (e) => { e.preventDefault(); joy.active = false; joy.normX = 0; joy.normY = 0; }, {passive: false});
+
+    let gameState = 'START'; 
+    let score = 0, stage = 1, frameCount = 0, cameraX = 0, animId;
+    let bossActive = false;
+    const input = { jump: false, attack: false, ult: false };
+
+    function drawBackground(ctx, w, h) {
+        ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        for(let i=0; i<4; i++) {
+            let cx = ((i * 350 - cameraX * 0.1 + frameCount * 0.3) % (w + 200)) - 100;
+            if(cx < -100) cx += w + 200;
+            ctx.beginPath(); ctx.arc(cx, 80 + i*15, 30, 0, Math.PI*2); ctx.arc(cx+25, 70 + i*15, 40, 0, Math.PI*2); ctx.arc(cx+50, 80 + i*15, 30, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.fillStyle = bossActive ? '#4a235a' : '#6ab04c'; 
+        for(let i=-1; i<w/250 + 2; i++) {
+            let bx = (i * 450 - (cameraX * 0.3) % 450);
+            ctx.beginPath(); ctx.moveTo(bx, h); ctx.lineTo(bx + 225, h - 200); ctx.lineTo(bx + 450, h); ctx.fill();
+        }
+        ctx.fillStyle = bossActive ? '#6c3483' : '#badc58';
+        for(let i=-1; i<w/200 + 2; i++) {
+            let fx = (i * 350 - (cameraX * 0.6) % 350);
+            ctx.beginPath(); ctx.arc(fx + 175, h, 180, Math.PI, 0); ctx.fill();
+        }
+        ctx.fillStyle = '#78e08f'; ctx.fillRect(0, h - 45, w, 45); ctx.fillStyle = '#38ada9'; ctx.fillRect(0, h - 45, w, 8);
+        if (joy.active) { ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.arc(joy.baseX, joy.baseY, 50, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(joy.stickX, joy.stickY, 20, 0, Math.PI*2); ctx.fill(); }
+    }
+
+    class Player {
+        constructor(type) {
+            this.type = type; this.w = 40; this.h = 40; this.worldX = 200; this.y = canvas.height - this.h - 45;
+            this.vx = 0; this.vy = 0; this.speed = 6.5; this.jumpForce = -16; this.gravity = 0.85;
+            this.grounded = false; this.aimAngle = 0; this.hp = 3; this.maxHp = 5;
+            this.invincibility = 0; this.atkCooldown = 0; this.ultGauge = 0; this.maxUltGauge = 100;
+            this.dashInvincibility = false; this.attackAnimTimer = 0; 
+        }
+        update() {
+            if (this.dashInvincibility) {
+                // 켄지 궁극기 지속중 (컨트롤 무시)
+            } else {
+                if (joy.active) { this.vx = joy.normX * this.speed; this.aimAngle = joy.angle; } 
+                else { this.vx *= 0.8; if (Math.abs(this.vx) > 0.5) this.aimAngle = this.vx > 0 ? 0 : Math.PI; }
+            }
+
+            if (input.jump && this.grounded && !this.dashInvincibility) { this.vy = this.jumpForce; this.grounded = false; playSound('jump'); }
+            
+            if (!this.dashInvincibility) this.vy += this.gravity; 
+            
+            this.worldX += this.vx; this.y += this.vy;
+
+            const groundY = canvas.height - 45;
+            if (this.y + this.h >= groundY) { this.y = groundY - this.h; if(!this.dashInvincibility) this.vy = 0; this.grounded = true; }
+            if (this.worldX < 0) this.worldX = 0;
+
+            let targetCameraX = this.worldX - canvas.width * 0.3;
+            if (targetCameraX < 0) targetCameraX = 0;
+            cameraX += (targetCameraX - cameraX) * 0.1;
+
+            if (this.invincibility > 0) this.invincibility--;
+            if (this.atkCooldown > 0) this.atkCooldown--;
+            if (this.attackAnimTimer > 0) this.attackAnimTimer--;
+
+            if (input.attack && this.atkCooldown <= 0) this.attack();
+            if (input.ult && this.ultGauge >= this.maxUltGauge) this.ultimate();
+            
+            if (this.dashInvincibility && frameCount % 2 === 0) {
+                particles.push(new Particle(this.worldX, this.y, 'afterimage', this.aimAngle));
+            }
+        }
+        attack() {
+            this.atkCooldown = 20; this.attackAnimTimer = 15; playSound('atk');
+            if (this.type === 'A') {
+                projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'base_A'));
+            } else {
+                hitboxes.push(new Hitbox(this, 140, 140, 15, 'base'));
+                particles.push(new Particle(this, 0, 'slash', this.aimAngle));
+            }
+        }
+        ultimate() {
+            this.ultGauge = 0; updateUI(); playSound('jump');
+            if (this.type === 'A') {
+                for (let i = -2; i <= 2; i++) projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle + (i * 0.2), 'ult_A'));
+            } else { 
+                this.dashInvincibility = true; 
+                this.vy = Math.sin(this.aimAngle) * 45;
+                this.vx = Math.cos(this.aimAngle) * 45;
+                // 켄지 궁극기 밸런싱: 500ms(화면 끝) -> 250ms(화면 절반)으로 조정 완료
+                setTimeout(() => { this.dashInvincibility = false; }, 250); 
+                hitboxes.push(new Hitbox(this, 300, 300, 15, 'ult')); // 판정 크기 및 유지시간 조정
+            }
+        }
+        takeDamage() {
+            if (this.invincibility > 0 || this.dashInvincibility) return;
+            this.hp--; playSound('hit'); this.invincibility = 60; updateUI();
+            if (this.hp <= 0) { 
+                gameState = 'GAMEOVER'; 
+                saveRank(score, this.type); // 게임오버 시 캐릭터 타입과 함께 랭킹 저장
+                ui.finalScore.innerText = `최종 점수: ${score}점`; 
+                ui.gameover.style.display = 'flex'; ui.ctrl.style.display = 'none'; joy.active = false; 
+            }
+        }
+        heal() { if (this.hp < this.maxHp) { this.hp++; updateUI(); } }
+        draw(ctx) {
+            if (this.invincibility > 0 && frameCount % 10 < 5) return;
+            let drawX = this.worldX - cameraX; let isLeft = Math.cos(this.aimAngle) < 0; 
+            
+            ctx.save(); ctx.translate(drawX + this.w/2, this.y + this.h/2); 
+            if (isLeft) ctx.scale(-1, 1);
+
+            let myImg = this.type === 'A' ? imgA : imgB;
+            if (myImg.complete && myImg.naturalWidth > 0) {
+                ctx.drawImage(myImg, -this.w/2, -this.h/2, this.w, this.h);
+            } else {
+                if (this.type === 'A') {
+                    ctx.fillStyle = '#1a1a2e'; ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-30, -20); ctx.lineTo(-25, 0); ctx.lineTo(-35, 10); ctx.lineTo(-10, 10); ctx.fill();
+                    ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.arc(5, -2, 16, Math.PI*0.5, Math.PI*1.5); ctx.arc(-5, -2, 16, Math.PI*1.5, Math.PI*0.5); ctx.fill();
+                    ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.ellipse(4, -5, 4, 6, 0.3, 0, Math.PI*2); ctx.fill();
+                    ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(10, 5); ctx.rotate(Math.PI/2); ctx.translate(-10, -5); }
+                    ctx.fillStyle = '#fff'; ctx.fillRect(10, 5, 25, 4); ctx.fillStyle = '#e74c3c'; ctx.fillRect(10, 2, 4, 10); ctx.restore();
+                } else {
+                    ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.arc(0, -5, 22, Math.PI, 0); ctx.fill();
+                    ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, 5, 18, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#e74c3c'; ctx.fillRect(-20, -8, 40, 6); ctx.beginPath(); ctx.moveTo(-20, -5); ctx.lineTo(-35, -15); ctx.lineTo(-30, -5); ctx.fill();
+                    ctx.fillStyle = '#000'; ctx.fillRect(2, -2, 4, 4); ctx.fillRect(10, -2, 4, 4);
+                    ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(12, 10); ctx.rotate(Math.PI/1.5); ctx.translate(-12, -10); }
+                    ctx.fillStyle = '#aaa'; ctx.fillRect(12, 10, 25, 3); ctx.fillStyle = '#333'; ctx.fillRect(12, 5, 3, 13); ctx.restore();
+                }
+            }
+            ctx.restore();
+        }
+    }
+
+    class Hitbox {
+        constructor(owner, w, h, duration, type) { 
+            this.owner = owner; this.w = w; this.h = h; this.duration = duration; this.type = type;
+            this.active = true; this.hitEnemies = []; this.updatePos();
+        }
+        updatePos() {
+            let dist = this.type === 'ult' ? 0 : 50;
+            this.worldX = this.owner.worldX + this.owner.w/2 + Math.cos(this.owner.aimAngle)*dist - this.w/2;
+            this.y = this.owner.y + this.owner.h/2 + Math.sin(this.owner.aimAngle)*dist - this.h/2;
+        }
+        update() { 
+            this.updatePos();
+            this.duration--; if (this.duration <= 0) this.active = false; 
+        }
+        draw(ctx) {} 
+    }
+
+    class Boss {
+        constructor() {
+            this.w = 80 + (stage * 20); this.h = 80 + (stage * 20);
+            this.worldX = cameraX + canvas.width + 100; this.y = 50;
+            this.maxHp = Math.max(2, Math.floor(stage * 1.5)); 
+            this.hp = this.maxHp;
+            this.active = true; 
+            this.vx = 0; this.vy = 0.5 + (stage * 0.1); this.speed = 1;
+            this.attackTimer = 0; this.isHit = 0;
+            bossActive = true;
+        }
+        update() {
+            let targetX = cameraX + canvas.width - this.w - 50;
+            if (this.worldX > targetX) this.worldX -= this.speed;
+            
+            this.y += this.vy;
+            if (this.y < 50 || this.y > canvas.height - this.h - 50) this.vy *= -1;
+
+            if (this.isHit > 0) this.isHit--;
+
+            this.attackTimer++;
+            let fireRate = Math.max(100, 200 - (stage * 20)); 
+            if (this.attackTimer > fireRate) {
+                this.attackTimer = 0; playSound('boss_hit');
+                let baseAngle = Math.PI; 
+                let spread = 0.4; 
+                for(let i = -1; i <= 1; i++) {
+                    enemyProjectiles.push(new Projectile(this.worldX, this.y + this.h/2, baseAngle + i*spread, 'boss_atk'));
+                }
+            }
+        }
+        takeDamage(dmg) {
+            this.hp -= dmg; this.isHit = 5; playSound('boss_hit');
+            if (this.hp <= 0) {
+                this.active = false; bossActive = false;
+                score += 200; player.heal();
+                for(let i=0; i<30; i++) particles.push(new Particle(this.worldX+this.w/2, this.y+this.h/2, 'exp', 0));
+                ui.stageAlert.innerText = `STAGE CLEAR!`; ui.stageAlert.style.color = '#00ff00';
+                ui.stageAlert.style.opacity = 1; setTimeout(() => { ui.stageAlert.style.opacity = 0; ui.stageAlert.style.color = '#ffd700'; }, 3000);
+            }
+        }
+        draw(ctx) {
+            let screenX = this.worldX - cameraX;
+            ctx.save(); ctx.translate(screenX + this.w/2, this.y + this.h/2);
+            if (imgBoss.complete && imgBoss.naturalWidth > 0) {
+                ctx.globalAlpha = this.isHit > 0 ? 0.5 : 1; ctx.drawImage(imgBoss, -this.w/2, -this.h/2, this.w, this.h);
+            } else {
+                ctx.fillStyle = this.isHit > 0 ? '#fff' : '#c0392b';
+                ctx.beginPath(); ctx.ellipse(0, 0, this.w/2, this.h/2, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(-30, -this.h/2); ctx.lineTo(-40, -this.h/2 - 30); ctx.lineTo(-15, -this.h/2 - 10); ctx.lineTo(0, -this.h/2 - 40); ctx.lineTo(15, -this.h/2 - 10); ctx.lineTo(40, -this.h/2 - 30); ctx.lineTo(30, -this.h/2); ctx.fill();
+                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(-25, -10); ctx.lineTo(-5, 0); ctx.lineTo(-25, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(25, -10); ctx.lineTo(5, 0); ctx.lineTo(25, 10); ctx.fill();
+                ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(-15, 0, 5, 0, Math.PI*2); ctx.arc(15, 0, 5, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w, 10);
+            ctx.fillStyle = '#ff3333'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w * (this.hp / this.maxHp), 10);
+            ctx.restore();
+        }
+    }
+
+    class Projectile {
+        constructor(x, y, angle, type) {
+            this.worldX = x; this.y = y; this.angle = angle; this.type = type;
+            this.startX = x; // 다크메타 사거리 너프를 위한 시작 좌표 저장
+            let speed = type === 'ult_A' ? 14 : (type === 'boss_atk' ? 3 + (stage*0.5) : 11);
+            this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+            this.w = type === 'ult_A' ? 50 : (type === 'boss_atk' ? 20 : 35); this.h = this.w; this.active = true;
+        }
+        update() {
+            this.worldX += this.vx; this.y += this.vy;
+            
+            // 다크메타 검기 사거리 제한: 화면 너비 절반까지만 날아감
+            if (this.type === 'base_A' || this.type === 'ult_A') {
+                let distanceTraveled = Math.sqrt(Math.pow(this.worldX - this.startX, 2));
+                if (distanceTraveled > canvas.width / 2) {
+                    this.active = false;
+                    for(let i=0; i<3; i++) particles.push(new Particle(this.worldX, this.y, 'exp', 0));
+                }
+            }
+
+            let screenX = this.worldX - cameraX;
+            if (screenX < -100 || screenX > canvas.width + 100 || this.y > canvas.height + 50 || this.y < -50) this.active = false;
+        }
+        draw(ctx) {
+            let screenX = this.worldX - cameraX;
+            ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle);
+            if (this.type === 'boss_atk') {
+                ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#ff9900'; ctx.beginPath(); ctx.arc(0, 0, this.w/4, 0, Math.PI*2); ctx.fill();
+            } else {
+                ctx.strokeStyle = this.type === 'ult_A' ? '#ff00ff' : '#00ffff';
+                ctx.lineWidth = 6; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.arc(0, 0, this.w/2, -Math.PI/2.5, Math.PI/2.5, false); ctx.stroke();
+            }
+            ctx.restore();
+        }
+    }
+
+    class Enemy {
+        constructor() {
+            let baseSpeed = 0.5 + (stage * 0.2); let rand = Math.random();
+            if (stage === 1) this.type = 0; else if (stage === 2) this.type = rand < 0.7 ? 0 : 2; else this.type = rand < 0.4 ? 0 : (rand < 0.7 ? 2 : 1);
+            this.worldX = cameraX + canvas.width + 50; this.active = true;
+            if (this.type === 0) { this.w = 35; this.h = 30; this.y = canvas.height - 45 - this.h; this.vx = -baseSpeed; }
+            else if (this.type === 1) { this.w = 30; this.h = 20; this.y = canvas.height - 130 - Math.random() * 50; this.baseY = this.y; this.vx = -(baseSpeed + 0.5); }
+            else { this.w = 35; this.h = 25; this.y = canvas.height - 45 - this.h; this.vx = -(baseSpeed + 1); }
+        }
+        update() {
+            this.worldX += this.vx;
+            if (this.type === 1) this.y = this.baseY + Math.sin(frameCount * 0.05) * 40;
+            if (this.worldX < cameraX - 100) this.active = false;
+        }
+        draw(ctx) {
+            let screenX = this.worldX - cameraX;
+            ctx.save(); ctx.translate(screenX + this.w/2, this.y + this.h/2);
+            if (this.type === 0) { 
+                ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.ellipse(0, 0, 17, 15, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-6, -3, 4, 0, Math.PI*2); ctx.arc(6, -3, 4, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(-6, -3, 2, 0, Math.PI*2); ctx.arc(6, -3, 2, 0, Math.PI*2); ctx.fill();
+            } else if (this.type === 1) { 
+                ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.ellipse(0, 0, 15, 10, 0, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-25, -15); ctx.lineTo(-10, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(25, -15); ctx.lineTo(10, 10); ctx.fill();
+                ctx.fillStyle = 'red'; ctx.fillRect(-5, -3, 3, 3); ctx.fillRect(2, -3, 3, 3);
+            } else { 
+                ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(0, 10, 15, Math.PI, 0); ctx.fill();
+                ctx.fillStyle = '#d35400'; ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-5, -20); ctx.lineTo(0, -5); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(5, -20); ctx.lineTo(10, -5); ctx.fill();
+            }
+            ctx.restore();
+        }
+    }
+
+    class Item {
+        constructor(x, y) { this.worldX = x; this.y = y; this.w = 20; this.h = 20; this.vy = -6; this.gravity = 0.5; this.active = true; }
+        update() {
+            this.vy += this.gravity; this.y += this.vy;
+            const groundY = canvas.height - 45;
+            if (this.y + this.h >= groundY) { this.y = groundY - this.h; this.vy = -this.vy * 0.4; }
+            if (this.worldX < cameraX - 100) this.active = false;
+        }
+        draw(ctx) {
+            let screenX = this.worldX - cameraX;
+            ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(screenX + 10, this.y + 10, 10, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#27ae60'; ctx.fillRect(screenX + 8, this.y - 3, 4, 6);
+        }
+    }
+
+    class Particle {
+        constructor(xOrOwner, y, type, angle) {
+            if (typeof xOrOwner === 'object' && xOrOwner !== null) { this.owner = xOrOwner; this.worldX = 0; this.y = 0; } 
+            else { this.owner = null; this.worldX = xOrOwner; this.y = y; }
+            this.type = type; this.angle = angle;
+            this.life = type === 'slash' ? 15 : (type === 'afterimage' ? 20 : 15);
+            this.maxLife = this.life;
+            this.vx = (Math.random() - 0.5) * 5; this.vy = (Math.random() - 0.5) * 5;
+        }
+        update() { 
+            if (this.owner) {
+                let dist = this.type === 'slash' ? 60 : 0;
+                this.worldX = this.owner.worldX + this.owner.w/2 + Math.cos(this.angle)*dist;
+                this.y = this.owner.y + this.owner.h/2 + Math.sin(this.angle)*dist;
+            } else { this.worldX += this.vx; this.y += this.vy; }
+            this.life--; 
+        }
+        draw(ctx) {
+            let screenX = this.worldX - cameraX; ctx.globalAlpha = this.life / this.maxLife;
+            if (this.type === 'slash') {
+                ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.arc(0, 0, 60, -Math.PI/2, Math.PI/2); ctx.stroke(); ctx.restore();
+            } else if (this.type === 'afterimage') {
+                ctx.save(); ctx.translate(screenX + 20, this.y + 20); if (Math.cos(this.angle) < 0) ctx.scale(-1, 1);
+                ctx.globalAlpha = (this.life / this.maxLife) * 0.6; ctx.fillStyle = '#ff4b2b';
+                ctx.beginPath(); ctx.arc(0, -5, 22, 0, Math.PI*2); ctx.fill(); ctx.restore();
+            } else {
+                ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.arc(screenX, this.y, 10 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    let projectiles = [], enemyProjectiles = [], hitboxes = [], enemies = [], items = [], particles = [], boss = null;
+
+    function initGame(charType) {
+        player = new Player(charType);
+        projectiles = []; enemyProjectiles = []; hitboxes = []; enemies = []; items = []; particles = []; boss = null; bossActive = false;
+        score = 0; stage = 1; cameraX = 0; frameCount = 0; gameState = 'PLAYING'; joy.active = false;
+        ui.start.style.display = 'none'; ui.gameover.style.display = 'none'; ui.confirm.style.display = 'none';
+        ui.ctrl.style.display = 'flex'; ui.gameUI.style.display = 'flex';
+        updateUI(); gameLoop();
+    }
+
+    // 터치 버그 완벽 수정을 위한 click 및 touchstart 동시 할당 (e.preventDefault()로 중복방지)
+    const handleHomeBtn = (e) => { e.preventDefault(); if(gameState === 'PLAYING') { gameState = 'PAUSED'; joy.active = false; ui.confirm.style.display = 'block'; } };
+    document.getElementById('btn-home').addEventListener('touchstart', handleHomeBtn, {passive: false});
+    document.getElementById('btn-home').addEventListener('mousedown', handleHomeBtn);
+
+    const handleConfirmYes = (e) => { e.preventDefault(); ui.confirm.style.display = 'none'; ui.gameover.style.display = 'none'; ui.ctrl.style.display = 'none'; ui.gameUI.style.display = 'none'; updateRankBoard(); ui.start.style.display = 'flex'; ctx.clearRect(0,0,canvas.width,canvas.height); };
+    document.getElementById('btn-confirm-yes').addEventListener('touchstart', handleConfirmYes, {passive: false});
+    document.getElementById('btn-confirm-yes').addEventListener('mousedown', handleConfirmYes);
+
+    const handleConfirmNo = (e) => { e.preventDefault(); ui.confirm.style.display = 'none'; gameState = 'PLAYING'; gameLoop(); };
+    document.getElementById('btn-confirm-no').addEventListener('touchstart', handleConfirmNo, {passive: false});
+    document.getElementById('btn-confirm-no').addEventListener('mousedown', handleConfirmNo);
+
+    const handleRetry = (e) => { e.preventDefault(); ui.gameover.style.display = 'none'; ui.ctrl.style.display = 'none'; ui.gameUI.style.display = 'none'; updateRankBoard(); ui.start.style.display = 'flex'; ctx.clearRect(0,0,canvas.width,canvas.height); };
+    document.getElementById('btn-retry').addEventListener('touchstart', handleRetry, {passive: false});
+    document.getElementById('btn-retry').addEventListener('mousedown', handleRetry);
+
+
+    function checkCollisions() {
+        const killEnemy = (e) => {
+            e.active = false; score += 50; playSound('hit');
+            player.ultGauge = Math.min(player.maxUltGauge, player.ultGauge + 15);
+            for(let i=0; i<6; i++) particles.push(new Particle(e.worldX, e.y, 'exp', 0));
+            // 사과 드랍률 20%로 안정화
+            if(Math.random() < 0.20) items.push(new Item(e.worldX, e.y)); 
+        };
+
+        projectiles.forEach(p => {
+            enemies.forEach(e => { if (p.active && e.active && isCollide(p, e)) { killEnemy(e); p.active = false; }});
+            if (p.active && bossActive && boss.active && isCollide(p, boss)) { boss.takeDamage(1); p.active = false; }
+        });
+
+        hitboxes.forEach(h => {
+            enemies.forEach(e => {
+                if (h.active && e.active && isCollide(h, e) && !h.hitEnemies.includes(e)) {
+                    h.hitEnemies.push(e); killEnemy(e);
+                }
+            });
+            if (h.active && bossActive && boss.active && isCollide(h, boss) && !h.hitEnemies.includes(boss)) {
+                h.hitEnemies.push(boss); boss.takeDamage(1);
+            }
+        });
+
+        if (score >= stage * 500 && !bossActive) {
+            stage++; boss = new Boss(); enemies = []; 
+            ui.stageAlert.innerText = `WARNING: BOSS APPROACHING!`; ui.stageAlert.style.color = '#ff0000';
+            ui.stageAlert.style.opacity = 1; setTimeout(() => { ui.stageAlert.style.opacity = 0; }, 2000);
+        }
+
+        enemies.forEach(e => { if (e.active && isCollide(player, e)) player.takeDamage(); });
+        enemyProjectiles.forEach(ep => { if (ep.active && isCollide(player, ep)) { player.takeDamage(); ep.active = false; } });
+        if (bossActive && boss.active && isCollide(player, boss)) player.takeDamage();
+        items.forEach(i => { if (i.active && isCollide(player, i)) { i.active = false; player.heal(); }});
+    }
+
+    function isCollide(r1, r2) { let r1w = r1.w||20, r1h = r1.h||20, r2w = r2.w||20, r2h = r2.h||20; return r1.worldX < r2.worldX + r2w && r1.worldX + r1w > r2.worldX && r1.y < r2.y + r2h && r1.h + r1.y > r2.y; }
+
+    function updateUI() {
+        ui.score.innerText = `SCORE: ${score}`; ui.stage.innerText = `STAGE ${stage}`;
+        ui.hearts.innerText = '❤️'.repeat(player.hp) + '🖤'.repeat(player.maxHp - player.hp);
+        ui.ult.style.width = `${(player.ultGauge / player.maxUltGauge) * 100}%`;
+        player.ultGauge >= player.maxUltGauge ? ui.btnUlt.classList.add('ready') : ui.btnUlt.classList.remove('ready');
+    }
+
+    function gameLoop() {
+        if (gameState !== 'PLAYING') return;
+        frameCount++; drawBackground(ctx, canvas.width, canvas.height);
+        
+        player.update(); player.draw(ctx);
+        if (bossActive && boss.active) { boss.update(); boss.draw(ctx); }
+
+        let spawnRate = Math.max(40, 100 - (stage * 10));
+        if (!bossActive && frameCount % spawnRate === 0) enemies.push(new Enemy());
+
+        [projectiles, enemyProjectiles, hitboxes, enemies, particles, items].forEach(arr => {
+            for (let i = arr.length - 1; i >= 0; i--) { let obj = arr[i]; obj.update(); obj.draw(ctx); if (!obj.active) arr.splice(i, 1); }
+        });
+
+        checkCollisions(); updateUI(); animId = requestAnimationFrame(gameLoop);
+    }
+
+    function bindBtn(id, key) {
+        const btn = document.getElementById(id);
+        const press = (e) => { e.preventDefault(); input[key] = true; btn.classList.add('active'); };
+        const release = (e) => { e.preventDefault(); input[key] = false; btn.classList.remove('active'); };
+        btn.addEventListener('touchstart', press, {passive: false}); btn.addEventListener('touchend', release, {passive: false});
+        btn.addEventListener('mousedown', press); window.addEventListener('mouseup', () => { input[key] = false; btn.classList.remove('active'); });
+    }
+    bindBtn('btn-jump', 'jump'); bindBtn('btn-atk', 'attack'); bindBtn('btn-ult', 'ult');
+
+    document.getElementById('btn-char-a').addEventListener('click', () => initGame('A'));
+    document.getElementById('btn-char-b').addEventListener('click', () => initGame('B'));
+    document.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+
+</script>
+</body>
+</html>
