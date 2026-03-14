@@ -2,13 +2,23 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>별의 커비 Vs 브롤 스타즈</title>
     <style>
         * { box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #87CEEB; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
         
-        #game-container { display: flex; flex-direction: column; width: 100%; height: 100%; position: relative; }
+        /* 100dvh 적용: 사파리 주소창 유무에 따라 동적으로 화면 높이 조절 */
+        body, html { margin: 0; padding: 0; width: 100%; background-color: #87CEEB; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        
+        /* 스크롤 허용 모드 (인트로 화면용) */
+        body.scroll-mode { height: 150vh; overflow: auto; }
+        /* 스크롤 잠금 모드 (게임 플레이용) */
+        body.locked-mode { height: 100dvh; overflow: hidden; }
+        
+        #game-container { display: flex; flex-direction: column; width: 100%; height: 100dvh; position: fixed; top: 0; left: 0; }
         #canvas-wrapper { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
         canvas { display: block; width: 100%; height: 100%; }
         
@@ -46,7 +56,8 @@
 
         #joystick-zone { position: absolute; top: 0; left: 0; width: 50%; height: 100%; z-index: 4; }
 
-        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 50, 80, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20; backdrop-filter: blur(5px); }
+        /* 화면을 밀어올려도 인트로 UI는 화면 정중앙에 고정되도록 fixed 적용 */
+        .overlay-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background: rgba(20, 50, 80, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20; backdrop-filter: blur(5px); }
         .overlay-screen h1 { font-size: 2.2rem; text-shadow: 0 0 15px #ffd700; margin-bottom: 10px; color: #ffd700; text-align: center; line-height: 1.2;}
         
         .rank-board { background: rgba(0,0,0,0.5); border: 2px solid #00d2ff; padding: 10px 20px; border-radius: 10px; margin-bottom: 20px; width: 280px; text-align: center; }
@@ -68,11 +79,11 @@
         .btn-yes { background: #e74c3c; color: white; } .btn-no { background: #bdc3c7; color: black; }
         
         #game-over-screen { display: none; background: rgba(0,0,0,0.85); flex-direction: column; position: absolute; top:0; left:0; width:100%; height:100%; z-index:15; justify-content: center; align-items: center; color: white; }
+
+        .safari-guide { color: #ffcccc; font-size: 14px; text-align: center; margin-bottom: 25px; line-height: 1.5; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 10px; border: 1px dashed #ff9999;}
     </style>
 </head>
-<body>
-
-<div id="game-container">
+<body class="scroll-mode"> <div id="game-container">
     <div id="canvas-wrapper">
         <canvas id="gameCanvas"></canvas>
         <div id="joystick-zone"></div>
@@ -90,7 +101,12 @@
 
         <div id="intro-screen" class="overlay-screen">
             <h1>별의 커비<br>Vs 브롤 스타즈</h1>
-            <button id="btn-fullscreen">화면 터치하여 시작</button>
+            <div class="safari-guide">
+                💡 <b>모바일 웹 플레이 가이드</b> 💡<br>
+                손가락으로 화면을 <b>위로 쓱 스와이프</b>해서<br>상단 주소창을 먼저 숨겨주세요!<br>
+                (숨겨졌다면 아래 시작 버튼 클릭)
+            </div>
+            <button id="btn-fullscreen">준비 완료 (시작하기)</button>
         </div>
 
         <div id="start-screen" class="overlay-screen" style="display:none;">
@@ -198,11 +214,25 @@
         else if (type === 'boss_hit') { osc.type = 'square'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.2); gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2); osc.start(now); osc.stop(now + 0.2); }
     }
 
+    // 터치 방지 글로벌 플래그 (게임 시작 전에는 스와이프를 허용하여 주소창을 숨길 수 있게 함)
+    let isTouchLocked = false;
+    document.addEventListener('touchmove', (e) => { 
+        if (isTouchLocked) e.preventDefault(); 
+    }, { passive: false });
+
     document.getElementById('btn-fullscreen').addEventListener('click', () => {
+        // 버튼 클릭 시 화면을 원래 크기로 되돌리고 잠금(주소창이 내려오지 않음)
+        document.body.classList.remove('scroll-mode');
+        document.body.classList.add('locked-mode');
+        window.scrollTo(0, 0);
+        isTouchLocked = true; // 스크롤 완벽 차단
+
         const elem = document.documentElement;
         if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
         initAudio(); ui.intro.style.display = 'none'; updateRankBoard(); ui.start.style.display = 'flex';
+        resizeCanvas(); // 화면 재계산
     });
+
     function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
@@ -295,7 +325,6 @@
             if (this.type === 'A') {
                 projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'base_A'));
             } else {
-                // 켄지 기본 공격: 원뿔 형태 (반지름 120, 지속시간 15, 일반 대미지 1)
                 hitboxes.push(new Hitbox(this, 120, 15, 'base', 1));
                 particles.push(new Particle(this, 0, 'slash', this.aimAngle));
             }
@@ -309,7 +338,6 @@
                 this.vy = Math.sin(this.aimAngle) * 45;
                 this.vx = Math.cos(this.aimAngle) * 45;
                 setTimeout(() => { this.dashInvincibility = false; }, 250); 
-                // 켄지 궁극기 판정: 원뿔 형태 (반지름 300, 궁극기 대미지 3)
                 hitboxes.push(new Hitbox(this, 300, 15, 'ult', CONFIG.kenjiUltDamage)); 
             }
         }
@@ -354,7 +382,6 @@
         }
     }
 
-    // 켄지 공격 로직 전용 Hitbox (반지름 기반)
     class Hitbox {
         constructor(owner, radius, duration, type, damage) { 
             this.owner = owner; 
@@ -425,7 +452,6 @@
                 this.active = false; bossActive = false;
                 score += 200; 
                 
-                // === [업데이트 1] 보스 사망 시 모든 탄환 즉각 소멸 ===
                 enemyProjectiles = []; 
                 
                 stage++;
@@ -576,7 +602,6 @@
                 ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle);
                 ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round';
                 ctx.beginPath(); 
-                // === [업데이트 2] 켄지 이펙트: 정확히 120도 (-60도 ~ +60도) 원호 그리기 ===
                 ctx.arc(0, 0, 60, -Math.PI/3, Math.PI/3); 
                 ctx.stroke(); ctx.restore();
             } else if (this.type === 'afterimage') {
@@ -618,7 +643,6 @@
     document.getElementById('btn-retry').addEventListener('touchstart', handleRetry, {passive: false});
     document.getElementById('btn-retry').addEventListener('mousedown', handleRetry);
 
-    // === [업데이트 2] 켄지 타격 판정: 120도 부채꼴 각도 검사 로직 추가 ===
     function isConeCollide(h, target) {
         let tx = target.worldX + (target.w || 20) / 2;
         let ty = target.y + (target.h || 20) / 2;
@@ -629,16 +653,11 @@
         let dy = ty - oy;
         let dist = Math.sqrt(dx * dx + dy * dy);
         
-        // 사거리(반지름) 안에 들어오는지 확인 (적의 절반 크기만큼 여유 범위 제공)
         if (dist <= h.radius + (target.w || 20) / 2) {
             let angleToEnemy = Math.atan2(dy, dx);
             let angleDiff = Math.abs(angleToEnemy - h.owner.aimAngle);
-            
-            // 360도를 넘어가는 각도 차이 보정
             while (angleDiff > Math.PI) angleDiff = (2 * Math.PI) - angleDiff;
-            
-            // 시야각이 양옆으로 60도 (총 120도) 이내에 있는지 확인
-            if (angleDiff <= Math.PI / 3) {
+            if (angleDiff <= Math.PI / 3) { // 60도 (총 120도)
                 return true; 
             }
         }
@@ -659,13 +678,11 @@
             if(Math.random() < CONFIG.appleDropRate) items.push(new Item(e.worldX, e.y)); 
         };
 
-        // 다크메타 (투사체) 충돌
         projectiles.forEach(p => {
             enemies.forEach(e => { if (p.active && e.active && isCollide(p, e)) { killEnemy(e); p.active = false; }});
             if (p.active && bossActive && boss.active && isCollide(p, boss)) { boss.takeDamage(1); p.active = false; }
         });
 
-        // 켄지 (120도 부채꼴 Hitbox) 충돌
         hitboxes.forEach(h => {
             enemies.forEach(e => {
                 if (h.active && e.active && isConeCollide(h, e) && !h.hitEnemies.includes(e)) {
@@ -728,8 +745,7 @@
 
     document.getElementById('btn-char-a').addEventListener('click', () => initGame('A'));
     document.getElementById('btn-char-b').addEventListener('click', () => initGame('B'));
-    document.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
-
+    
 </script>
 </body>
 </html>
