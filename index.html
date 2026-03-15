@@ -338,17 +338,19 @@
                 this.atkCooldown = CONFIG.wizardAtkDelay;
                 let isLeft = Math.cos(this.aimAngle) < 0;
                 let angle = isLeft ? Math.PI * 0.75 : Math.PI * 0.25;
-                let speed = 15; 
+                
+                // === [수정 포인트] 속도를 크게 높이고, 보정값을 깎아내어 정확한 타점 확보 ===
+                let speed = 25; // 운석 속도 대폭 상향 (기존 15 -> 25)
                 let startY = -80; 
                 let targetY = canvas.height - 45;
                 
-                // 1. 하늘에서 땅까지 떨어지는 데 걸리는 시간(프레임) 계산
+                // 운석이 땅에 떨어질 때까지 걸리는 시간(프레임)
                 let t = (targetY - startY) / (Math.sin(angle) * speed);
                 
-                // 2. 캐릭터의 현재 위치 기준 300px 앞 + 떨어지는 동안 캐릭터가 이동할 거리(미래 위치 보정) 계산
-                let targetX = this.worldX + this.w/2 + (isLeft ? -300 : 300) + (this.vx * t);
+                // 타겟 위치: 캐릭터 전방 180px 고정 + 달릴 때 뒤통수에 떨어지지 않을 만큼만 약간 보정 (t * 0.7)
+                let targetX = this.worldX + this.w/2 + (isLeft ? -180 : 180) + (this.vx * t * 0.7);
                 
-                // 3. 타겟 위치에서 역으로 쏘아 올려 시작 위치 계산
+                // 하늘 시작점 역계산
                 let startX = targetX - (Math.cos(angle) * speed) * t;
 
                 projectiles.push(new Projectile(startX, startY, angle, 'meteor', this));
@@ -367,13 +369,12 @@
             } else if (this.type === 'C') {
                 let isLeft = Math.cos(this.aimAngle) < 0;
                 let angle = isLeft ? Math.PI * 0.75 : Math.PI * 0.25;
-                let speed = 10; 
+                let speed = 18; // 궁극기도 약간 상향 (기존 10 -> 18)
                 let startY = -canvas.height/2; 
                 let targetY = canvas.height - 45;
                 
-                // 궁극기 역시 동일하게 플레이어 이동 속도를 고려하여 300px 앞에 떨어지도록 역계산
                 let t = (targetY - startY) / (Math.sin(angle) * speed);
-                let targetX = this.worldX + this.w/2 + (isLeft ? -300 : 300) + (this.vx * t);
+                let targetX = this.worldX + this.w/2 + (isLeft ? -200 : 200) + (this.vx * t * 0.6);
                 let startX = targetX - (Math.cos(angle) * speed) * t;
 
                 projectiles.push(new Projectile(startX, startY, angle, 'sun_demise', this));
@@ -540,8 +541,9 @@
             let speed = 11;
             if(type === 'ult_A') speed = 14;
             if(type === 'boss_atk') speed = 3 + (stage*0.5);
-            if(type === 'meteor') speed = 15;
-            if(type === 'sun_demise') speed = 10;
+            // === 속도 업데이트 된 부분 ===
+            if(type === 'meteor') speed = 25; 
+            if(type === 'sun_demise') speed = 18; 
 
             this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
             
