@@ -76,9 +76,27 @@
         #game-over-screen { display: none; background: rgba(0,0,0,0.85); flex-direction: column; position: absolute; top:0; left:0; width:100%; height:100%; z-index:15; justify-content: center; align-items: center; color: white; }
 
         .safari-guide { color: #ffcccc; font-size: 14px; text-align: center; margin-bottom: 25px; line-height: 1.5; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 10px; border: 1px dashed #ff9999;}
+
+        /* === [신규 추가] 세로 모드 철벽 방어막 CSS === */
+        #portrait-warning {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
+            background: rgba(0, 0, 0, 0.95); color: #ffd700; z-index: 99999;
+            flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; font-size: 28px; font-weight: bold; line-height: 1.5;
+            backdrop-filter: blur(10px);
+        }
+        #portrait-warning span { font-size: 50px; margin-bottom: 15px; display: block; }
+        @media screen and (orientation: portrait) {
+            #portrait-warning { display: flex !important; }
+        }
     </style>
 </head>
 <body class="scroll-mode"> 
+
+<div id="portrait-warning">
+    <span>🔄</span>
+    원활한 플레이를 위해<br>스마트폰을 가로로 눕혀주세요!
+</div>
 
 <div id="game-container">
     <div id="canvas-wrapper">
@@ -118,7 +136,7 @@
                 </div>
                 <div class="char-card" id="btn-char-b" style="border-color: #ff4b2b;">
                     <h2>🍣 켄지</h2>
-                    <p>광역 베기 (절반 대시)</p>
+                    <p>광역 베기 (근접 공격)</p>
                 </div>
                 <div class="char-card" id="btn-char-c" style="border-color: #3498db;">
                     <h2>🧙‍♂️ 마법사</h2>
@@ -252,6 +270,7 @@
         if (isTouchLocked) e.preventDefault(); 
     }, { passive: false });
 
+    // === [신규 추가] 화면 방향 강제 잠금 로직 ===
     document.getElementById('btn-fullscreen').addEventListener('click', () => {
         document.body.classList.remove('scroll-mode');
         document.body.classList.add('locked-mode');
@@ -260,6 +279,14 @@
 
         const elem = document.documentElement;
         if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+        
+        // 안드로이드 크롬 등 지원 기기에서 가로 모드 강제 고정
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(function(error) {
+                console.log('가로 모드 자동 잠금 불가 (브라우저 정책):', error);
+            });
+        }
+
         initAudio(); ui.intro.style.display = 'none'; updateRankBoard(); ui.start.style.display = 'flex';
         resizeCanvas(); 
     });
@@ -387,8 +414,7 @@
                 projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'base_A', this));
             } else if (this.type === 'B') {
                 this.atkCooldown = 20;
-                // === [수정 포인트] 켄지 기본 공격 사거리 절반으로 축소 ===
-                hitboxes.push(new Hitbox(this, 75, 15, 'base', 1)); // 120px -> 75px
+                hitboxes.push(new Hitbox(this, 75, 15, 'base', 1));
                 particles.push(new Particle(this, 0, 'slash', this.aimAngle));
             } else if (this.type === 'C') {
                 this.atkCooldown = CONFIG.wizardAtkDelay;
@@ -728,8 +754,7 @@
         }
         update() { 
             if (this.owner) {
-                // === [수정 포인트] 켄지 기본 공격 시각 효과 오프셋(발생 위치) 축소 ===
-                let dist = this.type === 'slash' ? 25 : 0; // 60px -> 25px
+                let dist = this.type === 'slash' ? 25 : 0; 
                 this.worldX = this.owner.worldX + this.owner.w/2 + Math.cos(this.angle)*dist;
                 this.y = this.owner.y + this.owner.h/2 + Math.sin(this.angle)*dist;
             } else { this.worldX += this.vx; this.y += this.vy; }
@@ -740,8 +765,7 @@
             if (this.type === 'slash') {
                 ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle);
                 ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-                // === [수정 포인트] 시각 효과 크기와 위아래 각도를 판정과 동일하게 싱크 맞춤 ===
-                ctx.beginPath(); ctx.arc(0, 0, 50, -Math.PI/3.75, Math.PI/3.75); ctx.stroke(); ctx.restore(); // 반지름 60 -> 50, 각도 보정
+                ctx.beginPath(); ctx.arc(0, 0, 50, -Math.PI/3.75, Math.PI/3.75); ctx.stroke(); ctx.restore(); 
             } else if (this.type === 'afterimage') {
                 ctx.save(); ctx.translate(screenX + 20, this.y + 20); if (Math.cos(this.angle) < 0) ctx.scale(-1, 1);
                 ctx.globalAlpha = (this.life / this.maxLife) * 0.6; ctx.fillStyle = '#ff4b2b';
