@@ -338,10 +338,18 @@
                 this.atkCooldown = CONFIG.wizardAtkDelay;
                 let isLeft = Math.cos(this.aimAngle) < 0;
                 let angle = isLeft ? Math.PI * 0.75 : Math.PI * 0.25;
-                
-                // === [업데이트] 메테오 시작 위치: 캐릭터 너비(w) 만큼 전방 하늘(-80)에서 떨어짐 ===
-                let startX = this.worldX + this.w / 2 + (isLeft ? -this.w : this.w);
+                let speed = 15; 
                 let startY = -80; 
+                let targetY = canvas.height - 45;
+                
+                // 1. 하늘에서 땅까지 떨어지는 데 걸리는 시간(프레임) 계산
+                let t = (targetY - startY) / (Math.sin(angle) * speed);
+                
+                // 2. 캐릭터의 현재 위치 기준 300px 앞 + 떨어지는 동안 캐릭터가 이동할 거리(미래 위치 보정) 계산
+                let targetX = this.worldX + this.w/2 + (isLeft ? -300 : 300) + (this.vx * t);
+                
+                // 3. 타겟 위치에서 역으로 쏘아 올려 시작 위치 계산
+                let startX = targetX - (Math.cos(angle) * speed) * t;
 
                 projectiles.push(new Projectile(startX, startY, angle, 'meteor', this));
             }
@@ -360,11 +368,12 @@
                 let isLeft = Math.cos(this.aimAngle) < 0;
                 let angle = isLeft ? Math.PI * 0.75 : Math.PI * 0.25;
                 let speed = 10; 
-                let targetX = this.worldX + this.w/2 + (isLeft ? -250 : 250); 
                 let startY = -canvas.height/2; 
                 let targetY = canvas.height - 45;
                 
+                // 궁극기 역시 동일하게 플레이어 이동 속도를 고려하여 300px 앞에 떨어지도록 역계산
                 let t = (targetY - startY) / (Math.sin(angle) * speed);
+                let targetX = this.worldX + this.w/2 + (isLeft ? -300 : 300) + (this.vx * t);
                 let startX = targetX - (Math.cos(angle) * speed) * t;
 
                 projectiles.push(new Projectile(startX, startY, angle, 'sun_demise', this));
