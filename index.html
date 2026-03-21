@@ -61,7 +61,7 @@
         .rank-board li { margin-bottom: 5px; color: #ccc; }
 
         .char-select-container { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 900px;}
-        .char-card { background: rgba(0,0,0,0.4); border: 3px solid #aaa; padding: 15px; border-radius: 15px; text-align: center; width: 200px; cursor: pointer; transition: 0.2s; }
+        .char-card { background: rgba(0,0,0,0.4); border: 3px solid #aaa; padding: 15px; border-radius: 15px; text-align: center; width: 190px; cursor: pointer; transition: 0.2s; }
         .char-card:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .char-card h2 { margin: 5px 0; font-size: 18px; }
         .char-card p { font-size: 13px; color: #ccc; margin-top: 5px; }
@@ -145,6 +145,10 @@
                 <div class="char-card" id="btn-char-d" style="border-color: #ffd700;">
                     <h2>⚡ 번개마법사</h2>
                     <p>번개 낙하 & 오연뢰 궁극기</p>
+                </div>
+                <div class="char-card" id="btn-char-e" style="border-color: #e67e22;">
+                    <h2>🔫 콜트</h2>
+                    <p>원거리 연발 & 관통 사격</p>
                 </div>
             </div>
         </div>
@@ -231,7 +235,7 @@
             let ranks = JSON.parse(localStorage.getItem('brawlKirbyRanksV2')) || [];
             if(ranks.length === 0) { ui.rankList.innerHTML = "<li>아직 도전자가 없습니다!</li>"; return; }
             ui.rankList.innerHTML = ranks.map((r, index) => {
-                let charName = r.char === 'A' ? '🦇 다크메타' : (r.char === 'B' ? '🍣 켄지' : (r.char === 'C' ? '🧙‍♂️ 마법사' : '⚡ 번개마법사'));
+                let charName = r.char === 'A' ? '🦇 다크메타' : (r.char === 'B' ? '🍣 켄지' : (r.char === 'C' ? '🧙‍♂️ 마법사' : (r.char === 'D' ? '⚡ 번개마법사' : '🔫 콜트')));
                 return `<li>${index + 1}위 : ${r.score}점 (${charName})</li>`;
             }).join('');
         } catch(e) {
@@ -485,6 +489,16 @@
                 let targetX = this.worldX + this.w/2 + (isLeft ? -180 : 180) + (this.vx * t * 0.7);
                 projectiles.push(new Projectile(targetX, startY, Math.PI / 2, 'lightning', this));
             }
+            // === [복구] 콜트 기본 공격 (연발) ===
+            else if (this.type === 'E') {
+                playSound('atk'); this.atkCooldown = 25;
+                let isLeft = Math.cos(this.aimAngle) < 0;
+                // 공간을 두고 4발을 흩뿌리며 발사
+                for (let i = 0; i < 4; i++) {
+                    let offset = isLeft ? (i * 35) : -(i * 35);
+                    projectiles.push(new Projectile(this.worldX + this.w/2 + offset, this.y + this.h/2 + (Math.random()*6 - 3), this.aimAngle, 'colt_base', this));
+                }
+            }
         }
         ultimate() {
             this.ultGauge = 0; updateUI(); 
@@ -523,6 +537,15 @@
                     let baseDist = 150 + (i * 40); 
                     let targetX = this.worldX + this.w/2 + (isLeft ? -baseDist : baseDist) + (this.vx * t * 0.6);
                     projectiles.push(new Projectile(targetX, startY, Math.PI / 2, 'ult_lightning', this));
+                }
+            }
+            // === [복구] 콜트 궁극기 (불릿 스톰 - 관통 사격) ===
+            else if (this.type === 'E') {
+                playSound('jump'); playSound('atk');
+                let isLeft = Math.cos(this.aimAngle) < 0;
+                for (let i = 0; i < 10; i++) {
+                    let offset = isLeft ? (i * 40) : -(i * 40);
+                    projectiles.push(new Projectile(this.worldX + this.w/2 + offset, this.y + this.h/2 + (Math.random()*16 - 8), this.aimAngle, 'colt_ult', this));
                 }
             }
         }
@@ -577,6 +600,21 @@
                 ctx.fillStyle = '#784212'; ctx.fillRect(10, -15, 4, 30); 
                 ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.arc(12, -15, 7, 0, Math.PI*2); ctx.fill(); 
                 ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(10, -17, 3, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+            // === [복구] 콜트 외형 ===
+            else if (this.type === 'E') {
+                // 몸통 (파란색 조끼)
+                ctx.fillStyle = '#2980b9'; ctx.beginPath(); ctx.moveTo(-15, -10); ctx.lineTo(-15, 20); ctx.lineTo(15, 20); ctx.lineTo(15, -10); ctx.fill();
+                // 얼굴
+                ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI*2); ctx.fill();
+                // 붉은 머리 (폼파두르 스타일)
+                ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(-2, -15, 10, 0, Math.PI*2); ctx.arc(8, -10, 8, 0, Math.PI*2); ctx.fill();
+                // 눈
+                ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3);
+                // 양손 리볼버 (쌍권총)
+                ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(15, 5); ctx.rotate(Math.PI/6); ctx.translate(-15, -5); }
+                ctx.fillStyle = '#95a5a6'; ctx.fillRect(10, 0, 15, 6); ctx.fillRect(10, 6, 4, 8); 
                 ctx.restore();
             }
             ctx.restore();
@@ -705,6 +743,9 @@
         constructor(x, y, angle, type, owner) {
             this.worldX = x; this.y = y; this.angle = angle; this.type = type; this.owner = owner;
             this.startX = x; 
+            // === 관통 여부 설정 ===
+            this.piercing = (type === 'colt_ult');
+            this.hitEnemies = []; // 관통 무기가 중복으로 때리지 않게 기억하는 배열
             
             let speed = 11;
             if(type === 'ult_A') speed = 14;
@@ -713,6 +754,9 @@
             if(type === 'sun_demise') speed = 18; 
             if(type === 'lightning') speed = 35; 
             if(type === 'ult_lightning') speed = 40; 
+            // === 콜트 탄환 속도 ===
+            if(type === 'colt_base') speed = 20;
+            if(type === 'colt_ult') speed = 25;
 
             this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
             
@@ -723,15 +767,20 @@
             if(type === 'sun_demise') this.w = canvas.height / 2; 
             if(type === 'lightning') this.w = 25; 
             if(type === 'ult_lightning') this.w = 30; 
+            // === 콜트 탄환 크기 ===
+            if(type === 'colt_base') this.w = 15;
+            if(type === 'colt_ult') this.w = 25;
             
             this.h = this.w; this.active = true;
         }
         update() {
             this.worldX += this.vx; this.y += this.vy;
             
-            if (this.type === 'base_A' || this.type === 'ult_A') {
+            // 콜트 기본/궁극기 최대 사거리 지정
+            if (this.type === 'base_A' || this.type === 'ult_A' || this.type === 'colt_base' || this.type === 'colt_ult') {
                 let distanceTraveled = Math.sqrt(Math.pow(this.worldX - this.startX, 2));
-                if (distanceTraveled > canvas.width / 2) {
+                let maxRange = (this.type.includes('colt')) ? canvas.width * 0.7 : canvas.width / 2;
+                if (distanceTraveled > maxRange) {
                     this.active = false;
                     for(let i=0; i<3; i++) particles.push(new Particle(this.worldX, this.y, 'exp', 0));
                 }
@@ -787,7 +836,6 @@
                 ctx.fillStyle = '#ff3300'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(0, 0, this.w/2.5, 0, Math.PI*2); ctx.fill();
             } 
-            // === 번개 그래픽 축 역전 완료 (이제 꼬리가 위를 향합니다) ===
             else if (this.type === 'lightning' || this.type === 'ult_lightning') {
                 let tailLen = (this.type === 'lightning') ? 150 : 250;
                 ctx.strokeStyle = '#ffd700'; 
@@ -803,7 +851,6 @@
                 for(let i=1; i<=segs; i++) {
                     let oy = (i % 2 === 0) ? zig : -zig; 
                     if(i === segs) oy = 0; 
-                    // 회전된 캔버스 환경에서 X축을 마이너스(-)로 그리면 세상 좌표계에선 위(하늘)로 향합니다.
                     ctx.lineTo(-segW * i, oy); 
                 }
                 ctx.stroke();
@@ -817,6 +864,12 @@
                     ctx.lineWidth = 15;
                     ctx.stroke();
                 }
+            }
+            // === [복구] 콜트 총알 그리기 ===
+            else if (this.type === 'colt_base' || this.type === 'colt_ult') {
+                ctx.fillStyle = this.type === 'colt_ult' ? '#ff3300' : '#f1c40f'; // 궁극기는 붉은색, 기본은 노란색
+                ctx.beginPath(); ctx.ellipse(0, 0, this.w/2, this.w/4, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(this.w/4, -this.w/8, this.w/6, this.w/8, 0, 0, Math.PI*2); ctx.fill();
             }
             else {
                 ctx.strokeStyle = this.type === 'ult_A' ? '#ff00ff' : '#00ffff';
@@ -922,7 +975,6 @@
     let projectiles = [], enemyProjectiles = [], hitboxes = [], enemies = [], items = [], particles = [], boss = null, player = null;
 
     function initGame(charType) {
-        // 이전 게임 루프가 돌고 있다면 강제 종료 (중복 실행 방지)
         if (animId) cancelAnimationFrame(animId); 
         
         player = new Player(charType);
@@ -932,7 +984,6 @@
         ui.start.style.display = 'none'; ui.gameover.style.display = 'none'; ui.confirm.style.display = 'none';
         ui.ctrl.style.display = 'flex'; ui.gameUI.style.display = 'flex';
         
-        // 프레임 제어 타이머 초기화 (게임이 무조건 정상 속도로 출발하도록 고정)
         lastTime = 0; 
         updateUI(); 
         animId = requestAnimationFrame(gameLoop);
@@ -944,7 +995,7 @@
 
     const handleConfirmYes = (e) => { 
         e.preventDefault(); 
-        if (animId) cancelAnimationFrame(animId); // 메인으로 돌아갈 때 확실하게 루프 정지
+        if (animId) cancelAnimationFrame(animId); 
         ui.confirm.style.display = 'none'; ui.gameover.style.display = 'none'; ui.ctrl.style.display = 'none'; ui.gameUI.style.display = 'none'; updateRankBoard(); ui.start.style.display = 'flex'; ctx.clearRect(0,0,canvas.width,canvas.height); 
     };
     document.getElementById('btn-confirm-yes').addEventListener('touchstart', handleConfirmYes, {passive: false});
@@ -954,7 +1005,7 @@
         e.preventDefault(); 
         ui.confirm.style.display = 'none'; 
         gameState = 'PLAYING'; 
-        lastTime = performance.now(); // 재개 시 타이머 보정
+        lastTime = performance.now(); 
         animId = requestAnimationFrame(gameLoop); 
     };
     document.getElementById('btn-confirm-no').addEventListener('touchstart', handleConfirmNo, {passive: false});
@@ -962,7 +1013,7 @@
 
     const handleRetry = (e) => { 
         e.preventDefault(); 
-        if (animId) cancelAnimationFrame(animId); // 메인으로 돌아갈 때 확실하게 루프 정지
+        if (animId) cancelAnimationFrame(animId); 
         ui.gameover.style.display = 'none'; ui.ctrl.style.display = 'none'; ui.gameUI.style.display = 'none'; updateRankBoard(); ui.start.style.display = 'flex'; ctx.clearRect(0,0,canvas.width,canvas.height); 
     };
     document.getElementById('btn-retry').addEventListener('touchstart', handleRetry, {passive: false});
@@ -1012,7 +1063,16 @@
                     if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning') {
                         p.explode(); 
                     } else {
-                        killEnemy(e); p.active = false;
+                        // === 관통 여부에 따른 충돌 처리 ===
+                        if (p.piercing) {
+                            if (!p.hitEnemies.includes(e)) {
+                                p.hitEnemies.push(e);
+                                killEnemy(e);
+                            }
+                        } else {
+                            killEnemy(e); 
+                            p.active = false;
+                        }
                     }
                 }
             });
@@ -1020,7 +1080,15 @@
                 if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning') {
                     p.explode(); 
                 } else {
-                    boss.takeDamage(1); p.active = false; 
+                    if (p.piercing) {
+                        if (!p.hitEnemies.includes(boss)) {
+                            p.hitEnemies.push(boss);
+                            boss.takeDamage(1);
+                        }
+                    } else {
+                        boss.takeDamage(1); 
+                        p.active = false; 
+                    }
                 }
             }
         });
@@ -1069,10 +1137,9 @@
         player.ultGauge >= player.maxUltGauge ? ui.btnUlt.classList.add('ready') : ui.btnUlt.classList.remove('ready');
     }
 
-    // === 완전 동기화된 60FPS 게임 메인 루프 ===
     function gameLoop(timestamp) {
         if (!timestamp) timestamp = performance.now();
-        if (lastTime === 0) lastTime = timestamp; // 첫 프레임 보정 완료 (화면 멈춤 완전 해결)
+        if (lastTime === 0) lastTime = timestamp; 
         
         let deltaTime = timestamp - lastTime;
 
@@ -1141,6 +1208,8 @@
     document.getElementById('btn-char-b').addEventListener('click', () => initGame('B'));
     document.getElementById('btn-char-c').addEventListener('click', () => initGame('C'));
     document.getElementById('btn-char-d').addEventListener('click', () => initGame('D'));
+    // === [복구] 콜트 캐릭터 선택 버튼 바인딩 ===
+    document.getElementById('btn-char-e').addEventListener('click', () => initGame('E'));
     
 </script>
 </body>
