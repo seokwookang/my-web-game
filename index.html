@@ -60,13 +60,13 @@
         .rank-board ol { margin: 0; padding-left: 20px; text-align: left; font-size: 14px; }
         .rank-board li { margin-bottom: 5px; color: #ccc; }
 
-        .char-select-container { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 1000px;}
-        .char-card { background: rgba(0,0,0,0.4); border: 3px solid #aaa; padding: 15px; border-radius: 15px; text-align: center; width: 180px; cursor: pointer; transition: 0.2s; }
+        .char-select-container { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 900px;}
+        .char-card { background: rgba(0,0,0,0.4); border: 3px solid #aaa; padding: 15px; border-radius: 15px; text-align: center; width: 200px; cursor: pointer; transition: 0.2s; }
         .char-card:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
-        .char-card h2 { margin: 5px 0; font-size: 16px; }
-        .char-card p { font-size: 12px; color: #ccc; margin-top: 5px; line-height: 1.3; }
+        .char-card h2 { margin: 5px 0; font-size: 18px; }
+        .char-card p { font-size: 13px; color: #ccc; margin-top: 5px; }
         
-        #btn-fullscreen { padding: 12px 25px; font-size: 18px; background: #fff; color: #143250; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+        #btn-fullscreen { padding: 12px 25px; font-size: 18px; background: #fff; color: #143250; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; margin-bottom: 20px; z-index: 30; position: relative;}
 
         #confirm-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); border: 2px solid #fff; padding: 30px; border-radius: 15px; z-index: 30; text-align: center; color: white; }
         .modal-btns { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
@@ -81,7 +81,7 @@
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
             background: rgba(0, 0, 0, 0.95); color: #ffd700; z-index: 99999;
             flex-direction: column; justify-content: center; align-items: center;
-            text-align: center; font-size: 28px; font-weight: bold; line-height: 1.5;
+            text-align: center; font-size: 24px; font-weight: bold; line-height: 1.5;
             backdrop-filter: blur(10px);
         }
         #portrait-warning span { font-size: 50px; margin-bottom: 15px; display: block; }
@@ -95,6 +95,7 @@
 <div id="portrait-warning">
     <span>🔄</span>
     원활한 플레이를 위해<br>스마트폰을 가로로 눕혀주세요!
+    <button id="btn-dismiss-warning" style="margin-top: 25px; padding: 10px 20px; font-size: 16px; background: #fff; color: #000; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;">무시하고 닫기</button>
 </div>
 
 <div id="game-container">
@@ -145,10 +146,6 @@
                     <h2>⚡ 번개마법사</h2>
                     <p>번개 낙하 & 오연뢰 궁극기</p>
                 </div>
-                <div class="char-card" id="btn-char-e" style="border-color: #e67e22;">
-                    <h2>🔫 콜트</h2>
-                    <p>권총 사격 (화면 끝까지 사거리)<br>궁극기: 불렛 스톰(5연발)</p>
-                </div>
             </div>
         </div>
 
@@ -187,16 +184,16 @@
         kenjiUltDamage: 3,          
         appleDropRate: 0.20,
         wizardAtkDelay: 60,         
-        wizardUltDamage: 3,
-        coltAtkDelay: 12, // 콜트 연사 속도 (프레임 단위, 낮을수록 빠름)
-        coltUltDamage: 1, // 콜트 궁극기 한 발당 데미지
+        wizardUltDamage: 3          
     };
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
+    // 프레임 제어용 타이머 및 루프 ID
     let lastTime = 0;
-    const fpsInterval = 1000 / 60; 
+    const fpsInterval = 1000 / 60;
+    let animId = null; 
 
     const imgA = new Image(); imgA.src = ''; 
     const imgB = new Image(); imgB.src = ''; 
@@ -211,6 +208,12 @@
         stageAlert: document.getElementById('stage-alert'), finalScore: document.getElementById('final-score'),
         confirm: document.getElementById('confirm-modal'), rankList: document.getElementById('rank-list')
     };
+
+    // 경고창 강제 닫기 기능
+    document.getElementById('btn-dismiss-warning').addEventListener('click', function(e) {
+        e.preventDefault();
+        document.getElementById('portrait-warning').style.setProperty('display', 'none', 'important');
+    });
 
     function saveRank(newScore, charType) {
         if(newScore === 0) return;
@@ -228,7 +231,7 @@
             let ranks = JSON.parse(localStorage.getItem('brawlKirbyRanksV2')) || [];
             if(ranks.length === 0) { ui.rankList.innerHTML = "<li>아직 도전자가 없습니다!</li>"; return; }
             ui.rankList.innerHTML = ranks.map((r, index) => {
-                let charName = r.char === 'A' ? '🦇 다크메타' : (r.char === 'B' ? '🍣 켄지' : (r.char === 'C' ? '🧙‍♂️ 마법사' : (r.char === 'D' ? '⚡ 번개마법사' : '🔫 콜트')));
+                let charName = r.char === 'A' ? '🦇 다크메타' : (r.char === 'B' ? '🍣 켄지' : (r.char === 'C' ? '🧙‍♂️ 마법사' : '⚡ 번개마법사'));
                 return `<li>${index + 1}위 : ${r.score}점 (${charName})</li>`;
             }).join('');
         } catch(e) {
@@ -236,12 +239,13 @@
         }
     }
 
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    // 오디오 시스템 안정성 수정
+    const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
     let audioCtx;
     function initAudio() { 
         try {
-            if (!AudioContext) return;
-            if (!audioCtx) audioCtx = new AudioContext(); 
+            if (!AudioCtxClass) return;
+            if (!audioCtx) audioCtx = new AudioCtxClass(); 
             if (audioCtx.state === 'suspended') audioCtx.resume(); 
         } catch(e) {}
     }
@@ -293,27 +297,6 @@
                 gain.gain.setValueAtTime(0.2, now);
                 gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
                 osc.start(now); osc.stop(now + 0.3);
-            }
-            // === [신규 사운드] 콜트 권총 사운드 ===
-            else if (type === 'colt_atk') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(1500, now);
-                osc.frequency.exponentialRampToValueAtTime(1000, now + 0.05);
-                osc.frequency.setValueAtTime(800, now + 0.05);
-                osc.frequency.exponentialRampToValueAtTime(20, now + 0.1);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now); osc.stop(now + 0.1);
-            }
-            else if (type === 'colt_ult') { // 궁극기는 더 무겁고 빠른 사운드
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(1200, now);
-                osc.frequency.exponentialRampToValueAtTime(600, now + 0.04);
-                osc.frequency.setValueAtTime(1000, now + 0.04);
-                osc.frequency.exponentialRampToValueAtTime(10, now + 0.08);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
-                osc.start(now); osc.stop(now + 0.08);
             }
         } catch(e) {}
     }
@@ -372,16 +355,12 @@
     joyZone.addEventListener('touchend', (e) => { e.preventDefault(); joy.active = false; joy.normX = 0; joy.normY = 0; }, {passive: false});
 
     let gameState = 'START'; 
-    let score = 0, stage = 1, frameCount = 0, cameraX = 0, animId;
+    let score = 0, stage = 1, frameCount = 0, cameraX = 0;
     let bossActive = false;
     let stageKillCount = 0; 
     let requiredKills = CONFIG.baseRequiredKills;
     let breakTimer = 0; 
     const input = { jump: false, attack: false, ult: false };
-
-    // === 콜트 궁극기 연사 관리 변수 ===
-    let coltUltBurstCount = 0;
-    let coltUltTimer = 0;
 
     function drawBackground(ctx, w, h) {
         ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, w, h);
@@ -468,16 +447,6 @@
             if (this.atkCooldown > 0) this.atkCooldown--;
             if (this.attackAnimTimer > 0) this.attackAnimTimer--;
 
-            // === [신규 업데이트] 콜트 궁극기 연사 로직 ===
-            if (this.type === 'E' && coltUltBurstCount > 0) {
-                coltUltTimer++;
-                if (coltUltTimer % 4 === 0) { // 4프레임마다 한 발씩 발사 (매우 빠름)
-                    this.fireColtBullet(true);
-                    coltUltBurstCount--;
-                    if (coltUltBurstCount === 0) coltUltTimer = 0;
-                }
-            }
-
             if (input.attack && this.atkCooldown <= 0) this.attack();
             if (input.ult && this.ultGauge >= this.maxUltGauge) this.ultimate();
             
@@ -516,33 +485,7 @@
                 let targetX = this.worldX + this.w/2 + (isLeft ? -180 : 180) + (this.vx * t * 0.7);
                 projectiles.push(new Projectile(targetX, startY, Math.PI / 2, 'lightning', this));
             }
-            // === [신규 캐릭터] 콜트 기본 공격 ===
-            else if (this.type === 'E') {
-                if (coltUltBurstCount > 0) return; // 궁극기 연사 중에는 기본 공격 불가
-                this.atkCooldown = CONFIG.coltAtkDelay; // 빠른 연사
-                this.fireColtBullet(false);
-            }
         }
-
-        // === 콜트 탄환 발사 공통 함수 ===
-        fireColtBullet(isUlt) {
-            playSound(isUlt ? 'colt_ult' : 'colt_atk');
-            let isLeft = Math.cos(this.aimAngle) < 0;
-            // 양손 권총 번갈아 발사 시각 효과 (애니메이션 타이머 이용)
-            let handOffset = (this.attackAnimTimer > 7) ? 8 : -8; 
-            if(isUlt) handOffset = (coltUltBurstCount % 2 === 0) ? 8 : -8; // 궁극기는 연사 카운트 이용
-
-            // 발사 위치 계산 (캐릭터 중심 + 핸드 오프셋 + 에임 방향)
-            let bulletAngle = this.aimAngle;
-            let startX = this.worldX + this.w/2 + Math.cos(bulletAngle + Math.PI/2) * handOffset;
-            let startY = this.y + this.h/2 + Math.sin(bulletAngle + Math.PI/2) * handOffset;
-
-            projectiles.push(new Projectile(startX, startY, bulletAngle, isUlt ? 'ult_colt' : 'base_colt', this));
-            
-            // 총구 화염 파티클
-            for(let i=0; i<2; i++) particles.push(new Particle(startX, startY, 'muzzle_flash', bulletAngle));
-        }
-
         ultimate() {
             this.ultGauge = 0; updateUI(); 
             if (this.type === 'A') {
@@ -581,12 +524,6 @@
                     let targetX = this.worldX + this.w/2 + (isLeft ? -baseDist : baseDist) + (this.vx * t * 0.6);
                     projectiles.push(new Projectile(targetX, startY, Math.PI / 2, 'ult_lightning', this));
                 }
-            }
-            // === [신규 캐릭터] 콜트 궁극기 (불렛 스톰) ===
-            else if (this.type === 'E') {
-                this.attackAnimTimer = 30; // 긴 공격 애니메이션
-                coltUltBurstCount = 5; // 5발 연사 시작
-                coltUltTimer = 0;
             }
         }
         takeDamage() {
@@ -641,31 +578,6 @@
                 ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.arc(12, -15, 7, 0, Math.PI*2); ctx.fill(); 
                 ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(10, -17, 3, 0, Math.PI*2); ctx.fill();
                 ctx.restore();
-            }
-            // === [신규 캐릭터] 콜트 외형 그리기 ===
-            else if (this.type === 'E') {
-                // 몸통 (로브/조끼 - 파란색)
-                ctx.fillStyle = '#2980b9'; ctx.beginPath(); ctx.arc(0, 5, 18, 0, Math.PI*2); ctx.fill();
-                // 얼굴
-                ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI*2); ctx.fill(); 
-                // 눈
-                ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3);
-                // 머리 (빨간색 리젠트)
-                ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(-10, -15); ctx.lineTo(-15, -25); ctx.lineTo(0, -35); ctx.lineTo(15, -25); ctx.lineTo(10, -15); ctx.fill();
-                ctx.fillRect(-12, -15, 24, 8); // 구전나룻 부분
-                
-                // 권총 애니메이션
-                ctx.save(); 
-                // 공격 시 권총 앞으로 내밀기
-                if(this.attackAnimTimer > 0) { ctx.translate(5, 5); } else { ctx.translate(0, 10); }
-                
-                // 양손 은색 권총
-                ctx.fillStyle = '#bdc3c7'; ctx.fillRect(8, -2, 12, 5); ctx.fillRect(8, 3, 3, 6); // 오른손
-                ctx.fillRect(-20, -2, 12, 5); ctx.fillRect(-11, 3, 3, 6); // 왼손 (대칭)
-                ctx.restore();
-                
-                // 벨트 버클 (노란색)
-                ctx.fillStyle = '#f1c40f'; ctx.fillRect(-5, 15, 10, 6);
             }
             ctx.restore();
         }
@@ -757,4 +669,479 @@
                 
                 gameState = 'STAGE_BREAK';
                 breakTimer = 180; 
-                ui.stageAlert.style.color = '#00
+                ui.stageAlert.style.color = '#00ff00';
+                ui.stageAlert.style.opacity = 1;
+
+                player.vx = 0;
+                player.vy = 0;
+                player.dashInvincibility = false;
+                player.isUltDashing = false; 
+                player.dashTimer = 0; 
+            }
+        }
+        draw(ctx) {
+            let screenX = this.worldX - cameraX;
+            ctx.save(); ctx.translate(screenX + this.w/2, this.y + this.h/2);
+            ctx.scale(this.facingRight ? -1 : 1, 1);
+
+            if (imgBoss.complete && imgBoss.naturalWidth > 0) {
+                ctx.globalAlpha = this.isHit > 0 ? 0.5 : 1; ctx.drawImage(imgBoss, -this.w/2, -this.h/2, this.w, this.h);
+            } else {
+                ctx.fillStyle = this.isHit > 0 ? '#fff' : '#c0392b';
+                ctx.beginPath(); ctx.ellipse(0, 0, this.w/2, this.h/2, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(-30, -this.h/2); ctx.lineTo(-40, -this.h/2 - 30); ctx.lineTo(-15, -this.h/2 - 10); ctx.lineTo(0, -this.h/2 - 40); ctx.lineTo(15, -this.h/2 - 10); ctx.lineTo(40, -this.h/2 - 30); ctx.lineTo(30, -this.h/2); ctx.fill();
+                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(-25, -10); ctx.lineTo(-5, 0); ctx.lineTo(-25, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(25, -10); ctx.lineTo(5, 0); ctx.lineTo(25, 10); ctx.fill();
+                ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(-15, 0, 5, 0, Math.PI*2); ctx.arc(15, 0, 5, 0, Math.PI*2); ctx.fill();
+            }
+            
+            ctx.scale(this.facingRight ? -1 : 1, 1);
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w, 10);
+            ctx.fillStyle = '#ff3333'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w * (this.hp / this.maxHp), 10);
+            ctx.restore();
+        }
+    }
+
+    class Projectile {
+        constructor(x, y, angle, type, owner) {
+            this.worldX = x; this.y = y; this.angle = angle; this.type = type; this.owner = owner;
+            this.startX = x; 
+            
+            let speed = 11;
+            if(type === 'ult_A') speed = 14;
+            if(type === 'boss_atk') speed = 3 + (stage*0.5);
+            if(type === 'meteor') speed = 25; 
+            if(type === 'sun_demise') speed = 18; 
+            if(type === 'lightning') speed = 35; 
+            if(type === 'ult_lightning') speed = 40; 
+
+            this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+            
+            this.w = 35;
+            if(type === 'ult_A') this.w = 50;
+            if(type === 'boss_atk') this.w = 20;
+            if(type === 'meteor') this.w = 40; 
+            if(type === 'sun_demise') this.w = canvas.height / 2; 
+            if(type === 'lightning') this.w = 25; 
+            if(type === 'ult_lightning') this.w = 30; 
+            
+            this.h = this.w; this.active = true;
+        }
+        update() {
+            this.worldX += this.vx; this.y += this.vy;
+            
+            if (this.type === 'base_A' || this.type === 'ult_A') {
+                let distanceTraveled = Math.sqrt(Math.pow(this.worldX - this.startX, 2));
+                if (distanceTraveled > canvas.width / 2) {
+                    this.active = false;
+                    for(let i=0; i<3; i++) particles.push(new Particle(this.worldX, this.y, 'exp', 0));
+                }
+            }
+
+            if (this.type === 'meteor' || this.type === 'sun_demise' || this.type === 'lightning' || this.type === 'ult_lightning') {
+                if (this.y + this.h/2 >= canvas.height - 45) {
+                    this.explode();
+                }
+            }
+
+            let screenX = this.worldX - cameraX;
+            if (screenX < -this.w*2 || screenX > canvas.width + this.w*2 || this.y > canvas.height + this.w || this.y < -canvas.height * 4) this.active = false; 
+        }
+        
+        explode() {
+            this.active = false;
+            playSound('explosion');
+            
+            let centerX = this.worldX + this.w / 2; 
+            let centerY = this.y + this.h / 2;
+            
+            let radius, dmg, pType;
+
+            if (this.type === 'lightning') {
+                radius = 50; dmg = 1; pType = 'lightning_exp';
+            } else if (this.type === 'ult_lightning') {
+                radius = 60; dmg = CONFIG.wizardUltDamage; pType = 'lightning_exp';
+            } else if (this.type === 'meteor') {
+                radius = 45; dmg = 1; pType = 'exp';
+            } else if (this.type === 'sun_demise') {
+                radius = this.w * 0.6; dmg = CONFIG.wizardUltDamage; pType = 'exp';
+            }
+            
+            hitboxes.push(new StaticHitbox(centerX, centerY, radius, 15, dmg)); 
+            
+            let pCount = (this.type === 'sun_demise' || this.type === 'ult_lightning') ? 30 : 10;
+            for(let i=0; i<pCount; i++) particles.push(new Particle(centerX, centerY, pType, 0));
+        }
+
+        draw(ctx) {
+            let screenX = this.worldX - cameraX;
+            ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle);
+            
+            if (this.type === 'boss_atk') {
+                ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#ff9900'; ctx.beginPath(); ctx.arc(0, 0, this.w/4, 0, Math.PI*2); ctx.fill();
+            } else if (this.type === 'meteor') {
+                ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#d35400'; ctx.beginPath(); ctx.arc(0, 0, this.w/3, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'rgba(230, 126, 34, 0.5)'; ctx.beginPath(); ctx.moveTo(0,-this.w/2); ctx.lineTo(-this.w, 0); ctx.lineTo(0,this.w/2); ctx.fill();
+            } else if (this.type === 'sun_demise') {
+                ctx.fillStyle = '#ff3300'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(0, 0, this.w/2.5, 0, Math.PI*2); ctx.fill();
+            } 
+            // === 번개 그래픽 축 역전 완료 (이제 꼬리가 위를 향합니다) ===
+            else if (this.type === 'lightning' || this.type === 'ult_lightning') {
+                let tailLen = (this.type === 'lightning') ? 150 : 250;
+                ctx.strokeStyle = '#ffd700'; 
+                ctx.lineWidth = (this.type === 'lightning') ? 4 : 6;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                
+                let segs = 5;
+                let segW = tailLen / segs;
+                let zig = (this.type === 'lightning') ? 10 : 15;
+                
+                for(let i=1; i<=segs; i++) {
+                    let oy = (i % 2 === 0) ? zig : -zig; 
+                    if(i === segs) oy = 0; 
+                    // 회전된 캔버스 환경에서 X축을 마이너스(-)로 그리면 세상 좌표계에선 위(하늘)로 향합니다.
+                    ctx.lineTo(-segW * i, oy); 
+                }
+                ctx.stroke();
+
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = (this.type === 'lightning') ? 1.5 : 2.5;
+                ctx.stroke();
+
+                if(this.type === 'ult_lightning') {
+                    ctx.strokeStyle = 'rgba(142, 68, 173, 0.5)'; 
+                    ctx.lineWidth = 15;
+                    ctx.stroke();
+                }
+            }
+            else {
+                ctx.strokeStyle = this.type === 'ult_A' ? '#ff00ff' : '#00ffff';
+                ctx.lineWidth = 6; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.arc(0, 0, this.w/2, -Math.PI/2.5, Math.PI/2.5, false); ctx.stroke();
+            }
+            ctx.restore();
+        }
+    }
+
+    class Enemy {
+        constructor() {
+            let baseSpeed = (0.8 + Math.random() * 0.4) * Math.pow(CONFIG.difficultyMultiplier, stage - 1);
+            let rand = Math.random();
+            if (stage === 1) this.type = 0; else if (stage === 2) this.type = rand < 0.7 ? 0 : 2; else this.type = rand < 0.4 ? 0 : (rand < 0.7 ? 2 : 1);
+            this.worldX = cameraX + canvas.width + 50; this.active = true;
+            if (this.type === 0) { this.w = 35; this.h = 30; this.y = canvas.height - 45 - this.h; this.vx = -baseSpeed; }
+            else if (this.type === 1) { this.w = 30; this.h = 20; this.y = canvas.height - 130 - Math.random() * 50; this.baseY = this.y; this.vx = -(baseSpeed + 0.5); }
+            else { this.w = 35; this.h = 25; this.y = canvas.height - 45 - this.h; this.vx = -(baseSpeed + 1); }
+        }
+        update() {
+            this.worldX += this.vx;
+            if (this.type === 1) this.y = this.baseY + Math.sin(frameCount * 0.05) * 40;
+            if (this.worldX < cameraX - 100) this.active = false;
+        }
+        draw(ctx) {
+            let screenX = this.worldX - cameraX;
+            ctx.save(); ctx.translate(screenX + this.w/2, this.y + this.h/2);
+            if (this.type === 0) { 
+                ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.ellipse(0, 0, 17, 15, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-6, -3, 4, 0, Math.PI*2); ctx.arc(6, -3, 4, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(-6, -3, 2, 0, Math.PI*2); ctx.arc(6, -3, 2, 0, Math.PI*2); ctx.fill();
+            } else if (this.type === 1) {
+                ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.ellipse(0, 0, 15, 10, 0, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-25, -15); ctx.lineTo(-10, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(25, -15); ctx.lineTo(10, 10); ctx.fill();
+                ctx.fillStyle = 'red'; ctx.fillRect(-5, -3, 3, 3); ctx.fillRect(2, -3, 3, 3);
+            } else { 
+                ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(0, 10, 15, Math.PI, 0); ctx.fill();
+                ctx.fillStyle = '#d35400'; ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-5, -20); ctx.lineTo(0, -5); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(5, -20); ctx.lineTo(10, -5); ctx.fill();
+            }
+            ctx.restore();
+        }
+    }
+
+    class Item {
+        constructor(x, y) { this.worldX = x; this.y = y; this.w = 20; this.h = 20; this.vy = -6; this.gravity = 0.5; this.active = true; }
+        update() {
+            this.vy += this.gravity; this.y += this.vy;
+            const groundY = canvas.height - 45;
+            if (this.y + this.h >= groundY) { this.y = groundY - this.h; this.vy = -this.vy * 0.4; }
+            if (this.worldX < cameraX - 100) this.active = false;
+        }
+        draw(ctx) {
+            let screenX = this.worldX - cameraX;
+            ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(screenX + 10, this.y + 10, 10, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#27ae60'; ctx.fillRect(screenX + 8, this.y - 3, 4, 6);
+        }
+    }
+
+    class Particle {
+        constructor(xOrOwner, y, type, angle) {
+            if (typeof xOrOwner === 'object' && xOrOwner !== null) { this.owner = xOrOwner; this.worldX = 0; this.y = 0; } 
+            else { this.owner = null; this.worldX = xOrOwner; this.y = y; }
+            this.type = type; this.angle = angle;
+            this.life = type === 'slash' ? 15 : (type === 'afterimage' ? 20 : 15);
+            this.maxLife = this.life;
+            this.vx = (Math.random() - 0.5) * 5; this.vy = (Math.random() - 0.5) * 5;
+            if(type === 'lightning_exp') { this.vx *= 1.5; this.vy *= 1.5; this.life = 20; this.maxLife = 20; }
+        }
+        update() { 
+            if (this.owner) {
+                let dist = this.type === 'slash' ? 25 : 0; 
+                this.worldX = this.owner.worldX + this.owner.w/2 + Math.cos(this.angle)*dist;
+                this.y = this.owner.y + this.owner.h/2 + Math.sin(this.angle)*dist;
+            } else { this.worldX += this.vx; this.y += this.vy; }
+            this.life--; 
+        }
+        draw(ctx) {
+            let screenX = this.worldX - cameraX; ctx.globalAlpha = this.life / this.maxLife;
+            if (this.type === 'slash') {
+                ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.arc(0, 0, 50, -Math.PI/3.75, Math.PI/3.75); ctx.stroke(); ctx.restore(); 
+            } else if (this.type === 'afterimage') {
+                ctx.save(); ctx.translate(screenX + 20, this.y + 20); if (Math.cos(this.angle) < 0) ctx.scale(-1, 1);
+                ctx.globalAlpha = (this.life / this.maxLife) * 0.6; ctx.fillStyle = '#ff4b2b';
+                ctx.beginPath(); ctx.arc(0, -5, 22, 0, Math.PI*2); ctx.fill(); ctx.restore();
+            } 
+            else if (this.type === 'lightning_exp') {
+                let randCol = Math.random();
+                ctx.fillStyle = randCol < 0.7 ? '#ffd700' : '#fff'; 
+                ctx.beginPath(); ctx.arc(screenX, this.y, 12 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#8e44ad'; 
+                ctx.beginPath(); ctx.arc(screenX + (Math.random()-0.5)*10, this.y + (Math.random()-0.5)*10, 4 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill();
+            }
+            else {
+                ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.arc(screenX, this.y, 10 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    let projectiles = [], enemyProjectiles = [], hitboxes = [], enemies = [], items = [], particles = [], boss = null, player = null;
+
+    function initGame(charType) {
+        // 이전 게임 루프가 돌고 있다면 강제 종료 (중복 실행 방지)
+        if (animId) cancelAnimationFrame(animId); 
+        
+        player = new Player(charType);
+        projectiles = []; enemyProjectiles = []; hitboxes = []; enemies = []; items = []; particles = []; boss = null; bossActive = false;
+        score = 0; stage = 1; cameraX = 0; frameCount = 0; gameState = 'PLAYING'; joy.active = false;
+        stageKillCount = 0; requiredKills = CONFIG.baseRequiredKills; 
+        ui.start.style.display = 'none'; ui.gameover.style.display = 'none'; ui.confirm.style.display = 'none';
+        ui.ctrl.style.display = 'flex'; ui.gameUI.style.display = 'flex';
+        
+        // 프레임 제어 타이머 초기화 (게임이 무조건 정상 속도로 출발하도록 고정)
+        lastTime = 0; 
+        updateUI(); 
+        animId = requestAnimationFrame(gameLoop);
+    }
+
+    const handleHomeBtn = (e) => { e.preventDefault(); if(gameState === 'PLAYING') { gameState = 'PAUSED'; joy.active = false; ui.confirm.style.display = 'block'; } };
+    document.getElementById('btn-home').addEventListener('touchstart', handleHomeBtn, {passive: false});
+    document.getElementById('btn-home').addEventListener('mousedown', handleHomeBtn);
+
+    const handleConfirmYes = (e) => { 
+        e.preventDefault(); 
+        if (animId) cancelAnimationFrame(animId); // 메인으로 돌아갈 때 확실하게 루프 정지
+        ui.confirm.style.display = 'none'; ui.gameover.style.display = 'none'; ui.ctrl.style.display = 'none'; ui.gameUI.style.display = 'none'; updateRankBoard(); ui.start.style.display = 'flex'; ctx.clearRect(0,0,canvas.width,canvas.height); 
+    };
+    document.getElementById('btn-confirm-yes').addEventListener('touchstart', handleConfirmYes, {passive: false});
+    document.getElementById('btn-confirm-yes').addEventListener('mousedown', handleConfirmYes);
+
+    const handleConfirmNo = (e) => { 
+        e.preventDefault(); 
+        ui.confirm.style.display = 'none'; 
+        gameState = 'PLAYING'; 
+        lastTime = performance.now(); // 재개 시 타이머 보정
+        animId = requestAnimationFrame(gameLoop); 
+    };
+    document.getElementById('btn-confirm-no').addEventListener('touchstart', handleConfirmNo, {passive: false});
+    document.getElementById('btn-confirm-no').addEventListener('mousedown', handleConfirmNo);
+
+    const handleRetry = (e) => { 
+        e.preventDefault(); 
+        if (animId) cancelAnimationFrame(animId); // 메인으로 돌아갈 때 확실하게 루프 정지
+        ui.gameover.style.display = 'none'; ui.ctrl.style.display = 'none'; ui.gameUI.style.display = 'none'; updateRankBoard(); ui.start.style.display = 'flex'; ctx.clearRect(0,0,canvas.width,canvas.height); 
+    };
+    document.getElementById('btn-retry').addEventListener('touchstart', handleRetry, {passive: false});
+    document.getElementById('btn-retry').addEventListener('mousedown', handleRetry);
+
+    function isConeCollide(h, target) {
+        let tx = target.worldX + (target.w || 20) / 2; let ty = target.y + (target.h || 20) / 2;
+        let ox = h.owner.worldX + h.owner.w / 2; let oy = h.owner.y + h.owner.h / 2;
+        let dx = tx - ox; let dy = ty - oy; let dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= h.radius + (target.w || 20) / 2) {
+            let angleToEnemy = Math.atan2(dy, dx);
+            let angleDiff = Math.abs(angleToEnemy - h.owner.aimAngle);
+            while (angleDiff > Math.PI) angleDiff = (2 * Math.PI) - angleDiff;
+            
+            let limit = Math.PI / 3; 
+            if (h.owner.type === 'B' && h.type === 'base') limit = Math.PI / 3.75; 
+
+            if (angleDiff <= limit) return true; 
+        }
+        return false;
+    }
+
+    function isCircleRectCollide(cx, cy, radius, rect) {
+        let rx = rect.worldX, ry = rect.y, rw = rect.w || 20, rh = rect.h || 20;
+        let testX = cx; let testY = cy;
+        if (cx < rx) testX = rx; else if (cx > rx + rw) testX = rx + rw;
+        if (cy < ry) testY = ry; else if (cy > ry + rh) testY = ry + rh;
+        let distX = cx - testX; let distY = cy - testY;
+        return (distX*distX + distY*distY) <= (radius*radius);
+    }
+
+    function isCollide(r1, r2) { let r1w = r1.w||20, r1h = r1.h||20, r2w = r2.w||20, r2h = r2.h||20; return r1.worldX < r2.worldX + r2w && r1.worldX + r1w > r2.worldX && r1.y < r2.y + r2h && r1.h + r1.y > r2.y; }
+
+    function checkCollisions() {
+        const killEnemy = (e) => {
+            e.active = false; score += 50; playSound('hit');
+            stageKillCount++;
+            let ultChargeAmount = 100 / CONFIG.ultKillRequirement; 
+            player.ultGauge = Math.min(player.maxUltGauge, player.ultGauge + ultChargeAmount); 
+            for(let i=0; i<6; i++) particles.push(new Particle(e.worldX, e.y, 'exp', 0));
+            if(Math.random() < CONFIG.appleDropRate) items.push(new Item(e.worldX, e.y)); 
+        };
+
+        projectiles.forEach(p => {
+            enemies.forEach(e => { 
+                if (p.active && e.active && isCollide(p, e)) { 
+                    if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning') {
+                        p.explode(); 
+                    } else {
+                        killEnemy(e); p.active = false;
+                    }
+                }
+            });
+            if (p.active && bossActive && boss.active && isCollide(p, boss)) { 
+                if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning') {
+                    p.explode(); 
+                } else {
+                    boss.takeDamage(1); p.active = false; 
+                }
+            }
+        });
+
+        if (player.type === 'B' && player.isUltDashing) {
+            enemies.forEach(e => {
+                if (e.active && isCollide(player, e) && !player.ultDashHitEnemies.includes(e)) {
+                    player.ultDashHitEnemies.push(e); 
+                    killEnemy(e);
+                }
+            });
+            if (bossActive && boss.active && isCollide(player, boss) && !player.ultDashHitEnemies.includes(boss)) {
+                player.ultDashHitEnemies.push(boss);
+                boss.takeDamage(CONFIG.kenjiUltDamage);
+            }
+        }
+
+        hitboxes.forEach(h => {
+            if(h instanceof Hitbox) {
+                enemies.forEach(e => { if (h.active && e.active && isConeCollide(h, e) && !h.hitEnemies.includes(e)) { h.hitEnemies.push(e); killEnemy(e); } });
+                if (h.active && bossActive && boss.active && isConeCollide(h, boss) && !h.hitEnemies.includes(boss)) { h.hitEnemies.push(boss); boss.takeDamage(h.damage); }
+            } else if (h instanceof StaticHitbox) {
+                enemies.forEach(e => { if (h.active && e.active && isCircleRectCollide(h.worldX, h.y, h.radius, e) && !h.hitEnemies.includes(e)) { h.hitEnemies.push(e); killEnemy(e); } });
+                if (h.active && bossActive && boss.active && isCircleRectCollide(h.worldX, h.y, h.radius, boss) && !h.hitEnemies.includes(boss)) { h.hitEnemies.push(boss); boss.takeDamage(h.damage); }
+            }
+        });
+
+        if (stageKillCount >= requiredKills && !bossActive) {
+            boss = new Boss(); enemies = []; 
+            ui.stageAlert.innerText = `WARNING: BOSS APPROACHING!`; ui.stageAlert.style.color = '#ff0000';
+            ui.stageAlert.style.opacity = 1; setTimeout(() => { ui.stageAlert.style.opacity = 0; }, 2000);
+        }
+
+        enemies.forEach(e => { if (e.active && isCollide(player, e)) player.takeDamage(); });
+        enemyProjectiles.forEach(ep => { if (ep.active && isCollide(player, ep)) { player.takeDamage(); ep.active = false; } });
+        if (bossActive && boss.active && isCollide(player, boss)) player.takeDamage();
+        items.forEach(i => { if (i.active && isCollide(player, i)) { i.active = false; player.heal(); }});
+    }
+
+    function updateUI() {
+        ui.score.innerText = `SCORE: ${score}`; 
+        ui.stage.innerText = `STAGE ${stage} (처치: ${stageKillCount}/${requiredKills})`; 
+        ui.hearts.innerText = '❤️'.repeat(player.hp) + '♡'.repeat(player.maxHp - player.hp); 
+        let ultPercent = (player.ultGauge / player.maxUltGauge) * 100;
+        ui.btnUlt.style.setProperty('--fill', `${ultPercent}%`);
+        player.ultGauge >= player.maxUltGauge ? ui.btnUlt.classList.add('ready') : ui.btnUlt.classList.remove('ready');
+    }
+
+    // === 완전 동기화된 60FPS 게임 메인 루프 ===
+    function gameLoop(timestamp) {
+        if (!timestamp) timestamp = performance.now();
+        if (lastTime === 0) lastTime = timestamp; // 첫 프레임 보정 완료 (화면 멈춤 완전 해결)
+        
+        let deltaTime = timestamp - lastTime;
+
+        if (gameState === 'STAGE_BREAK') {
+            if (deltaTime >= fpsInterval) {
+                lastTime = timestamp - (deltaTime % fpsInterval);
+                frameCount++;
+                drawBackground(ctx, canvas.width, canvas.height);
+                player.draw(ctx);
+                particles.forEach(p => { p.update(); p.draw(ctx); });
+                hitboxes.forEach(h => { h.update(); h.draw(ctx); });
+                
+                if (breakTimer === 180) { ui.stageAlert.innerHTML = `잠시 눈을 쉬어주세요!<br>3`; playSound('beep_low'); }
+                if (breakTimer === 120) { ui.stageAlert.innerHTML = `잠시 눈을 쉬어주세요!<br>2`; playSound('beep_low'); }
+                if (breakTimer === 60)  { ui.stageAlert.innerHTML = `잠시 눈을 쉬어주세요!<br>1`; playSound('beep_low'); }
+                
+                breakTimer--;
+                
+                if (breakTimer <= 0) {
+                    playSound('beep_high'); 
+                    ui.stageAlert.style.opacity = 0;
+                    
+                    stage++;
+                    requiredKills = Math.floor(CONFIG.baseRequiredKills * Math.pow(CONFIG.difficultyMultiplier, stage - 1)); 
+                    if ((stage - 1) % CONFIG.stageForHpIncrease === 0) { player.maxHp++; player.hp++; } else { player.heal(); }
+                    
+                    updateUI();
+                    gameState = 'PLAYING';
+                }
+            }
+            animId = requestAnimationFrame(gameLoop);
+            return; 
+        }
+
+        if (gameState !== 'PLAYING') return;
+
+        if (deltaTime >= fpsInterval) {
+            lastTime = timestamp - (deltaTime % fpsInterval);
+            frameCount++; 
+            drawBackground(ctx, canvas.width, canvas.height);
+            player.update(); player.draw(ctx);
+            if (bossActive && boss.active) { boss.update(); boss.draw(ctx); }
+
+            let spawnRate = Math.max(20, Math.floor(100 * Math.pow(1 / CONFIG.difficultyMultiplier, stage - 1))); 
+            if (!bossActive && frameCount % spawnRate === 0) enemies.push(new Enemy());
+
+            [projectiles, enemyProjectiles, hitboxes, enemies, particles, items].forEach(arr => {
+                for (let i = arr.length - 1; i >= 0; i--) { let obj = arr[i]; obj.update(); obj.draw(ctx); if (!obj.active) arr.splice(i, 1); }
+            });
+
+            checkCollisions(); updateUI(); 
+        }
+        animId = requestAnimationFrame(gameLoop);
+    }
+
+    function bindBtn(id, key) {
+        const btn = document.getElementById(id);
+        const press = (e) => { e.preventDefault(); input[key] = true; btn.classList.add('active'); };
+        const release = (e) => { e.preventDefault(); input[key] = false; btn.classList.remove('active'); };
+        btn.addEventListener('touchstart', press, {passive: false}); btn.addEventListener('touchend', release, {passive: false});
+        btn.addEventListener('mousedown', press); window.addEventListener('mouseup', () => { input[key] = false; btn.classList.remove('active'); });
+    }
+    bindBtn('btn-jump', 'jump'); bindBtn('btn-atk', 'attack'); bindBtn('btn-ult', 'ult');
+
+    document.getElementById('btn-char-a').addEventListener('click', () => initGame('A'));
+    document.getElementById('btn-char-b').addEventListener('click', () => initGame('B'));
+    document.getElementById('btn-char-c').addEventListener('click', () => initGame('C'));
+    document.getElementById('btn-char-d').addEventListener('click', () => initGame('D'));
+    
+</script>
+</body>
+</html>
