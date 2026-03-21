@@ -60,7 +60,7 @@
         .rank-board ol { margin: 0; padding-left: 20px; text-align: left; font-size: 14px; }
         .rank-board li { margin-bottom: 5px; color: #ccc; }
 
-        .char-select-container { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 800px;}
+        .char-select-container { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 900px;}
         .char-card { background: rgba(0,0,0,0.4); border: 3px solid #aaa; padding: 15px; border-radius: 15px; text-align: center; width: 200px; cursor: pointer; transition: 0.2s; }
         .char-card:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .char-card h2 { margin: 5px 0; font-size: 18px; }
@@ -77,7 +77,7 @@
 
         .safari-guide { color: #ffcccc; font-size: 14px; text-align: center; margin-bottom: 25px; line-height: 1.5; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 10px; border: 1px dashed #ff9999;}
 
-        /* === [신규 추가] 세로 모드 철벽 방어막 CSS === */
+        /* === 세로 모드 철벽 방어막 CSS === */
         #portrait-warning {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
             background: rgba(0, 0, 0, 0.95); color: #ffd700; z-index: 99999;
@@ -141,6 +141,10 @@
                 <div class="char-card" id="btn-char-c" style="border-color: #3498db;">
                     <h2>🧙‍♂️ 마법사</h2>
                     <p>메테오 (낙하 & 스플래시)</p>
+                </div>
+                <div class="char-card" id="btn-char-d" style="border-color: #ffd700;">
+                    <h2>⚡ 번개마법사</h2>
+                    <p>번개 낙하 & 오연뢰 궁극기</p>
                 </div>
             </div>
         </div>
@@ -217,7 +221,7 @@
         let ranks = JSON.parse(localStorage.getItem('brawlKirbyRanksV2')) || [];
         if(ranks.length === 0) { ui.rankList.innerHTML = "<li>아직 도전자가 없습니다!</li>"; return; }
         ui.rankList.innerHTML = ranks.map((r, index) => {
-            let charName = r.char === 'A' ? '🦇 다크메타' : (r.char === 'B' ? '🍣 켄지' : '🧙‍♂️ 마법사');
+            let charName = r.char === 'A' ? '🦇 다크메타' : (r.char === 'B' ? '🍣 켄지' : (r.char === 'C' ? '🧙‍♂️ 마법사' : '⚡ 번개마법사'));
             return `<li>${index + 1}위 : ${r.score}점 (${charName})</li>`;
         }).join('');
     }
@@ -263,6 +267,17 @@
             gain.gain.linearRampToValueAtTime(0.01, now + 1.0);
             osc.start(now); osc.stop(now + 1.0);
         }
+        // === [신규 사운드] 번개 전기 사운드 ===
+        else if (type === 'lightning') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+            osc.frequency.setValueAtTime(1500, now + 0.1);
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        }
     }
 
     let isTouchLocked = false;
@@ -270,7 +285,7 @@
         if (isTouchLocked) e.preventDefault(); 
     }, { passive: false });
 
-    // === [신규 추가] 화면 방향 강제 잠금 로직 ===
+    // === 화면 방향 강제 잠금 로직 ===
     document.getElementById('btn-fullscreen').addEventListener('click', () => {
         document.body.classList.remove('scroll-mode');
         document.body.classList.add('locked-mode');
@@ -280,7 +295,6 @@
         const elem = document.documentElement;
         if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
         
-        // 안드로이드 크롬 등 지원 기기에서 가로 모드 강제 고정
         if (screen.orientation && screen.orientation.lock) {
             screen.orientation.lock('landscape').catch(function(error) {
                 console.log('가로 모드 자동 잠금 불가 (브라우저 정책):', error);
@@ -408,16 +422,16 @@
             }
         }
         attack() {
-            this.attackAnimTimer = 15; playSound('atk');
+            this.attackAnimTimer = 15; 
             if (this.type === 'A') {
-                this.atkCooldown = 20;
+                playSound('atk'); this.atkCooldown = 20;
                 projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'base_A', this));
             } else if (this.type === 'B') {
-                this.atkCooldown = 20;
-                hitboxes.push(new Hitbox(this, 75, 15, 'base', 1));
+                playSound('atk'); this.atkCooldown = 20;
+                hitboxes.push(new Hitbox(this, 75, 15, 'base', 1)); 
                 particles.push(new Particle(this, 0, 'slash', this.aimAngle));
             } else if (this.type === 'C') {
-                this.atkCooldown = CONFIG.wizardAtkDelay;
+                playSound('atk'); this.atkCooldown = CONFIG.wizardAtkDelay;
                 let isLeft = Math.cos(this.aimAngle) < 0;
                 let angle = isLeft ? Math.PI * 0.75 : Math.PI * 0.25;
                 let speed = 25;
@@ -428,12 +442,32 @@
                 let startX = targetX - (Math.cos(angle) * speed) * t;
                 projectiles.push(new Projectile(startX, startY, angle, 'meteor', this));
             }
+            // === [신규 캐릭터] 번개마법사 기본 공격 ===
+            else if (this.type === 'D') {
+                playSound('lightning'); this.atkCooldown = CONFIG.wizardAtkDelay * 0.8; // 마법사보다 약간 빠름
+                let isLeft = Math.cos(this.aimAngle) < 0;
+                let targetY = canvas.height - 45;
+                
+                // 하늘 아주 높은 곳에서 수직 낙하
+                let startY = -targetY * 2; 
+                let speed = 35; // 매우 빠름
+                
+                let t = (targetY - startY) / speed; 
+                
+                // 마법사 메테오와 동일한 거리 (180px)
+                let targetX = this.worldX + this.w/2 + (isLeft ? -180 : 180) + (this.vx * t * 0.7);
+                
+                // 수직 낙하하므로 startX = targetX, angle = 90도(Math.PI/2)
+                projectiles.push(new Projectile(targetX, startY, Math.PI / 2, 'lightning', this));
+            }
         }
         ultimate() {
-            this.ultGauge = 0; updateUI(); playSound('jump');
+            this.ultGauge = 0; updateUI(); 
             if (this.type === 'A') {
+                playSound('jump');
                 for (let i = -2; i <= 2; i++) projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle + (i * 0.2), 'ult_A', this));
             } else if (this.type === 'B') { 
+                playSound('jump');
                 this.dashInvincibility = true; 
                 this.isUltDashing = true;
                 this.ultDashHitEnemies = []; 
@@ -441,6 +475,7 @@
                 this.vy = Math.sin(this.aimAngle) * 30;
                 this.vx = Math.cos(this.aimAngle) * 30;
             } else if (this.type === 'C') {
+                playSound('jump');
                 let isLeft = Math.cos(this.aimAngle) < 0;
                 let angle = isLeft ? Math.PI * 0.75 : Math.PI * 0.25;
                 let speed = 18; 
@@ -450,6 +485,23 @@
                 let targetX = this.worldX + this.w/2 + (isLeft ? -200 : 200) + (this.vx * t * 0.6);
                 let startX = targetX - (Math.cos(angle) * speed) * t;
                 projectiles.push(new Projectile(startX, startY, angle, 'sun_demise', this));
+            }
+            // === [신규 캐릭터] 번개마법사 궁극기 (오연뢰) ===
+            else if (this.type === 'D') {
+                playSound('lightning'); playSound('explosion'); // 강력한 사운드 겹치기
+                let isLeft = Math.cos(this.aimAngle) < 0;
+                let targetY = canvas.height - 45;
+                let startY = -targetY * 3; 
+                let speed = 40; // 엄청 빠름
+                let t = (targetY - startY) / speed;
+
+                // 5개의 번개를 거리를 두고 소환
+                for (let i = 0; i < 5; i++) {
+                    // 첫 번째는 150px, 그 뒤로 40px씩 더 멀어짐
+                    let baseDist = 150 + (i * 40); 
+                    let targetX = this.worldX + this.w/2 + (isLeft ? -baseDist : baseDist) + (this.vx * t * 0.6);
+                    projectiles.push(new Projectile(targetX, startY, Math.PI / 2, 'ult_lightning', this));
+                }
             }
         }
         takeDamage() {
@@ -494,6 +546,26 @@
                 ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(12, -15, 7, 0, Math.PI*2); ctx.fill(); 
                 ctx.restore();
             }
+            // === [신규 캐릭터] 번개마법사 외형 그리기 ===
+            else if (this.type === 'D') {
+                // 몸통 (로브 - 파란색)
+                ctx.fillStyle = '#1e3799'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-18, 20); ctx.lineTo(18, 20); ctx.fill(); 
+                // 얼굴
+                ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI*2); ctx.fill(); 
+                // 모자 (노란색 뾰족 모자)
+                ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(-18, -10); ctx.lineTo(18, -10); ctx.lineTo(0, -38); ctx.fill(); 
+                // 눈
+                ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); 
+                // 지팡이 애니메이션
+                ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(12, 5); ctx.rotate(Math.PI/2); ctx.translate(-12, -5); }
+                // 갈색 지팡이
+                ctx.fillStyle = '#784212'; ctx.fillRect(10, -15, 4, 30); 
+                // 보라색 보석
+                ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.arc(12, -15, 7, 0, Math.PI*2); ctx.fill(); 
+                // 보석 광택
+                ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(10, -17, 3, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
             ctx.restore();
         }
     }
@@ -515,8 +587,12 @@
         update() { this.duration--; if (this.duration <= 0) this.active = false; }
         draw(ctx) {
             let screenX = this.worldX - cameraX;
-            ctx.fillStyle = `rgba(255, 60, 0, ${(this.duration / this.maxDuration) * 0.7})`;
+            // 전기 폭발 느낌을 위해 파란색/노란색 혼합
+            let alpha = (this.duration / this.maxDuration);
+            ctx.fillStyle = `rgba(100, 200, 255, ${alpha * 0.7})`;
             ctx.beginPath(); ctx.arc(screenX, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = `rgba(255, 255, 200, ${alpha * 0.5})`;
+            ctx.beginPath(); ctx.arc(screenX, this.y, this.radius * 0.7, 0, Math.PI*2); ctx.fill();
         }
     }
 
@@ -623,6 +699,9 @@
             if(type === 'boss_atk') speed = 3 + (stage*0.5);
             if(type === 'meteor') speed = 25; 
             if(type === 'sun_demise') speed = 18; 
+            // === [신규 투사체] 번개 속도 설정 ===
+            if(type === 'lightning') speed = 35; // 매우 빠름
+            if(type === 'ult_lightning') speed = 40; // 엄청 빠름
 
             this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
             
@@ -631,6 +710,9 @@
             if(type === 'boss_atk') this.w = 20;
             if(type === 'meteor') this.w = 40; 
             if(type === 'sun_demise') this.w = canvas.height / 2; 
+            // === [신규 투사체] 번개 크기 설정 ===
+            if(type === 'lightning') this.w = 25; 
+            if(type === 'ult_lightning') this.w = 30; 
             
             this.h = this.w; this.active = true;
         }
@@ -645,14 +727,15 @@
                 }
             }
 
-            if (this.type === 'meteor' || this.type === 'sun_demise') {
+            // === [신규 투사체] 번개/메테오 폭발 조건 ===
+            if (this.type === 'meteor' || this.type === 'sun_demise' || this.type === 'lightning' || this.type === 'ult_lightning') {
                 if (this.y + this.h/2 >= canvas.height - 45) {
                     this.explode();
                 }
             }
 
             let screenX = this.worldX - cameraX;
-            if (screenX < -this.w*2 || screenX > canvas.width + this.w*2 || this.y > canvas.height + this.w || this.y < -canvas.height) this.active = false;
+            if (screenX < -this.w*2 || screenX > canvas.width + this.w*2 || this.y > canvas.height + this.w || this.y < -canvas.height * 4) this.active = false; // 하늘 높이 소환 고려하여 y축 범위 확장
         }
         
         explode() {
@@ -662,13 +745,23 @@
             let centerX = this.worldX + this.w / 2; 
             let centerY = this.y + this.h / 2;
             
-            let radius = this.type === 'meteor' ? 45 : this.w * 0.6; 
-            let dmg = this.type === 'meteor' ? 1 : CONFIG.wizardUltDamage;
+            let radius, dmg, pType;
+
+            // === [신규 투사체] 번개 폭발 설정 ===
+            if (this.type === 'lightning') {
+                radius = 50; dmg = 1; pType = 'lightning_exp';
+            } else if (this.type === 'ult_lightning') {
+                radius = 60; dmg = CONFIG.wizardUltDamage; pType = 'lightning_exp';
+            } else if (this.type === 'meteor') {
+                radius = 45; dmg = 1; pType = 'exp';
+            } else if (this.type === 'sun_demise') {
+                radius = this.w * 0.6; dmg = CONFIG.wizardUltDamage; pType = 'exp';
+            }
             
             hitboxes.push(new StaticHitbox(centerX, centerY, radius, 15, dmg)); 
             
-            let pCount = this.type === 'meteor' ? 10 : 30;
-            for(let i=0; i<pCount; i++) particles.push(new Particle(centerX, centerY, 'exp', 0));
+            let pCount = (this.type === 'sun_demise' || this.type === 'ult_lightning') ? 30 : 10;
+            for(let i=0; i<pCount; i++) particles.push(new Particle(centerX, centerY, pType, 0));
         }
 
         draw(ctx) {
@@ -685,7 +778,40 @@
             } else if (this.type === 'sun_demise') {
                 ctx.fillStyle = '#ff3300'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(0, 0, this.w/2.5, 0, Math.PI*2); ctx.fill();
-            } else {
+            } 
+            // === [신규 투사체] 번개 그리기 ===
+            else if (this.type === 'lightning' || this.type === 'ult_lightning') {
+                let tailLen = (this.type === 'lightning') ? 150 : 250;
+                // 수직 낙하이므로 지그재그 그리기
+                ctx.strokeStyle = '#ffd700'; // 노란색
+                ctx.lineWidth = (this.type === 'lightning') ? 4 : 6;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                // 간단한 지그재그 패턴
+                let segs = 5;
+                let segH = tailLen / segs;
+                let zig = (this.type === 'lightning') ? 10 : 15;
+                for(let i=1; i<=segs; i++) {
+                    let ox = (i % 2 === 0) ? zig : -zig;
+                    if(i === segs) ox = 0; // 끝점은 중앙
+                    ctx.lineTo(ox, -segH * i);
+                }
+                ctx.stroke();
+
+                // 중심부 흰색 광원
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = (this.type === 'lightning') ? 1.5 : 2.5;
+                ctx.stroke();
+
+                // 궁극기는 보라색 오라 추가
+                if(this.type === 'ult_lightning') {
+                    ctx.strokeStyle = 'rgba(142, 68, 173, 0.5)'; // 보라색
+                    ctx.lineWidth = 15;
+                    ctx.stroke();
+                }
+            }
+            else {
                 ctx.strokeStyle = this.type === 'ult_A' ? '#ff00ff' : '#00ffff';
                 ctx.lineWidth = 6; ctx.lineCap = 'round';
                 ctx.beginPath(); ctx.arc(0, 0, this.w/2, -Math.PI/2.5, Math.PI/2.5, false); ctx.stroke();
@@ -716,7 +842,7 @@
                 ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.ellipse(0, 0, 17, 15, 0, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-6, -3, 4, 0, Math.PI*2); ctx.arc(6, -3, 4, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(-6, -3, 2, 0, Math.PI*2); ctx.arc(6, -3, 2, 0, Math.PI*2); ctx.fill();
-            } else if (this.type === 1) { 
+            } else if (this.type === '1') { 
                 ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.ellipse(0, 0, 15, 10, 0, 0, Math.PI*2); ctx.fill();
                 ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-25, -15); ctx.lineTo(-10, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(25, -15); ctx.lineTo(10, 10); ctx.fill();
                 ctx.fillStyle = 'red'; ctx.fillRect(-5, -3, 3, 3); ctx.fillRect(2, -3, 3, 3);
@@ -751,6 +877,8 @@
             this.life = type === 'slash' ? 15 : (type === 'afterimage' ? 20 : 15);
             this.maxLife = this.life;
             this.vx = (Math.random() - 0.5) * 5; this.vy = (Math.random() - 0.5) * 5;
+            // === [신규 파티클] 번개 파티클 속도 ===
+            if(type === 'lightning_exp') { this.vx *= 1.5; this.vy *= 1.5; this.life = 20; this.maxLife = 20; }
         }
         update() { 
             if (this.owner) {
@@ -770,7 +898,17 @@
                 ctx.save(); ctx.translate(screenX + 20, this.y + 20); if (Math.cos(this.angle) < 0) ctx.scale(-1, 1);
                 ctx.globalAlpha = (this.life / this.maxLife) * 0.6; ctx.fillStyle = '#ff4b2b';
                 ctx.beginPath(); ctx.arc(0, -5, 22, 0, Math.PI*2); ctx.fill(); ctx.restore();
-            } else {
+            } 
+            // === [신규 파티클] 번개 폭발 파티클 ===
+            else if (this.type === 'lightning_exp') {
+                let randCol = Math.random();
+                ctx.fillStyle = randCol < 0.7 ? '#ffd700' : '#fff'; // 노란색/흰색 혼합
+                ctx.beginPath(); ctx.arc(screenX, this.y, 12 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill();
+                // 전기 스파크 느낌
+                ctx.fillStyle = '#8e44ad'; // 보라색 미세 스파크
+                ctx.beginPath(); ctx.arc(screenX + (Math.random()-0.5)*10, this.y + (Math.random()-0.5)*10, 4 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill();
+            }
+            else {
                 ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.arc(screenX, this.y, 10 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill();
             }
             ctx.globalAlpha = 1.0;
@@ -846,7 +984,8 @@
         projectiles.forEach(p => {
             enemies.forEach(e => { 
                 if (p.active && e.active && isCollide(p, e)) { 
-                    if (p.type === 'meteor' || p.type === 'sun_demise') {
+                    // === 번개/메테오는 관통하지 않고 부딪히면 즉시 폭발 ===
+                    if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning') {
                         p.explode(); 
                     } else {
                         killEnemy(e); p.active = false;
@@ -854,7 +993,7 @@
                 }
             });
             if (p.active && bossActive && boss.active && isCollide(p, boss)) { 
-                if (p.type === 'meteor' || p.type === 'sun_demise') {
+                if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning') {
                     p.explode(); 
                 } else {
                     boss.takeDamage(1); p.active = false; 
@@ -963,6 +1102,8 @@
     document.getElementById('btn-char-a').addEventListener('click', () => initGame('A'));
     document.getElementById('btn-char-b').addEventListener('click', () => initGame('B'));
     document.getElementById('btn-char-c').addEventListener('click', () => initGame('C'));
+    // === [신규 캐릭터] 번개마법사 버튼 바인딩 ===
+    document.getElementById('btn-char-d').addEventListener('click', () => initGame('D'));
     
 </script>
 </body>
