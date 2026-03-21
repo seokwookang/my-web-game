@@ -189,6 +189,10 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
+    // === [신규 추가] 120Hz 주사율 대응 프레임 제어용 변수 ===
+    let lastTime = 0;
+    const fpsInterval = 1000 / 60; // 초당 60프레임 목표 고정
+
     const imgA = new Image(); imgA.src = ''; 
     const imgB = new Image(); imgB.src = ''; 
     const imgBoss = new Image(); imgBoss.src = ''; 
@@ -203,7 +207,6 @@
         confirm: document.getElementById('confirm-modal'), rankList: document.getElementById('rank-list')
     };
 
-    // === 브라우저 보안 제한(시크릿 모드 등)으로 인한 에러 방지 처리 ===
     function saveRank(newScore, charType) {
         if(newScore === 0) return;
         try {
@@ -212,7 +215,7 @@
             ranks.sort((a, b) => b.score - a.score);
             ranks = ranks.slice(0, 5); 
             localStorage.setItem('brawlKirbyRanksV2', JSON.stringify(ranks));
-        } catch(e) { console.warn("기록 저장 실패 (브라우저 설정)"); }
+        } catch(e) { console.warn("기록 저장 실패"); }
     }
 
     function updateRankBoard() {
@@ -235,7 +238,7 @@
             if (!AudioContext) return;
             if (!audioCtx) audioCtx = new AudioContext(); 
             if (audioCtx.state === 'suspended') audioCtx.resume(); 
-        } catch(e) { console.warn("오디오 지원하지 않는 브라우저"); }
+        } catch(e) {}
     }
     
     function playSound(type) {
@@ -294,7 +297,6 @@
         if (isTouchLocked) e.preventDefault(); 
     }, { passive: false });
 
-    // === 모바일 환경(인앱 브라우저 등) 크래시 방지용 전체화면/가로잠금 코드 ===
     document.getElementById('btn-fullscreen').addEventListener('click', () => {
         document.body.classList.remove('scroll-mode');
         document.body.classList.add('locked-mode');
@@ -309,7 +311,7 @@
             } else if (elem.webkitRequestFullscreen) {
                 elem.webkitRequestFullscreen();
             }
-        } catch (e) { console.warn("전체 화면 강제 차단됨"); }
+        } catch (e) {}
         
         try {
             if (screen.orientation && screen.orientation.lock) {
@@ -318,7 +320,7 @@
                     lockPromise.catch(() => {});
                 }
             }
-        } catch (e) { console.warn("가로 모드 고정 API 차단됨"); }
+        } catch (e) {}
 
         initAudio(); 
         ui.intro.style.display = 'none'; 
@@ -776,6 +778,7 @@
                 ctx.fillStyle = '#ff3300'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(0, 0, this.w/2.5, 0, Math.PI*2); ctx.fill();
             } 
+            // === [버그 수정] 번개 꼬리가 위를 향해 똑바로 그려지도록 수정 ===
             else if (this.type === 'lightning' || this.type === 'ult_lightning') {
                 let tailLen = (this.type === 'lightning') ? 150 : 250;
                 ctx.strokeStyle = '#ffd700'; 
@@ -783,13 +786,16 @@
                 ctx.lineCap = 'round';
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
+                
                 let segs = 5;
-                let segH = tailLen / segs;
+                let segW = tailLen / segs;
                 let zig = (this.type === 'lightning') ? 10 : 15;
+                
+                // 번개가 90도 회전되어 있으므로 X축 역방향(-X)으로 그려야 꼬리가 뒤(위쪽)에 생김
                 for(let i=1; i<=segs; i++) {
-                    let ox = (i % 2 === 0) ? zig : -zig;
-                    if(i === segs) ox = 0; 
-                    ctx.lineTo(ox, -segH * i);
+                    let oy = (i % 2 === 0) ? zig : -zig; 
+                    if(i === segs) oy = 0; 
+                    ctx.lineTo(-segW * i, oy); // Y축 대신 X축으로 수정
                 }
                 ctx.stroke();
 
@@ -834,7 +840,7 @@
                 ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.ellipse(0, 0, 17, 15, 0, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-6, -3, 4, 0, Math.PI*2); ctx.arc(6, -3, 4, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(-6, -3, 2, 0, Math.PI*2); ctx.arc(6, -3, 2, 0, Math.PI*2); ctx.fill();
-            } else if (this.type === 1) { // 몬스터 그래픽 버그 수정
+            } else if (this.type === 1) {
                 ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.ellipse(0, 0, 15, 10, 0, 0, Math.PI*2); ctx.fill();
                 ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-25, -15); ctx.lineTo(-10, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(25, -15); ctx.lineTo(10, 10); ctx.fill();
                 ctx.fillStyle = 'red'; ctx.fillRect(-5, -3, 3, 3); ctx.fillRect(2, -3, 3, 3);
@@ -904,7 +910,6 @@
         }
     }
 
-    // 전역 변수 초기화 (에러 방지용 player 선언)
     let projectiles = [], enemyProjectiles = [], hitboxes = [], enemies = [], items = [], particles = [], boss = null, player = null;
 
     function initGame(charType) {
@@ -914,7 +919,11 @@
         stageKillCount = 0; requiredKills = CONFIG.baseRequiredKills; 
         ui.start.style.display = 'none'; ui.gameover.style.display = 'none'; ui.confirm.style.display = 'none';
         ui.ctrl.style.display = 'flex'; ui.gameUI.style.display = 'flex';
-        updateUI(); gameLoop();
+        
+        // 프레임 제어 타이머 초기화
+        lastTime = performance.now();
+        updateUI(); 
+        requestAnimationFrame(gameLoop);
     }
 
     const handleHomeBtn = (e) => { e.preventDefault(); if(gameState === 'PLAYING') { gameState = 'PAUSED'; joy.active = false; ui.confirm.style.display = 'block'; } };
@@ -925,7 +934,7 @@
     document.getElementById('btn-confirm-yes').addEventListener('touchstart', handleConfirmYes, {passive: false});
     document.getElementById('btn-confirm-yes').addEventListener('mousedown', handleConfirmYes);
 
-    const handleConfirmNo = (e) => { e.preventDefault(); ui.confirm.style.display = 'none'; gameState = 'PLAYING'; gameLoop(); };
+    const handleConfirmNo = (e) => { e.preventDefault(); ui.confirm.style.display = 'none'; gameState = 'PLAYING'; lastTime = performance.now(); requestAnimationFrame(gameLoop); };
     document.getElementById('btn-confirm-no').addEventListener('touchstart', handleConfirmNo, {passive: false});
     document.getElementById('btn-confirm-no').addEventListener('mousedown', handleConfirmNo);
 
@@ -1034,30 +1043,37 @@
         player.ultGauge >= player.maxUltGauge ? ui.btnUlt.classList.add('ready') : ui.btnUlt.classList.remove('ready');
     }
 
-    function gameLoop() {
+    // === [신규 추가] 60FPS 고정 메인 루프 ===
+    function gameLoop(timestamp) {
+        if (!timestamp) timestamp = performance.now();
+        let deltaTime = timestamp - lastTime;
+
         if (gameState === 'STAGE_BREAK') {
-            frameCount++;
-            drawBackground(ctx, canvas.width, canvas.height);
-            player.draw(ctx);
-            particles.forEach(p => { p.update(); p.draw(ctx); });
-            hitboxes.forEach(h => { h.update(); h.draw(ctx); });
-            
-            if (breakTimer === 180) { ui.stageAlert.innerHTML = `잠시 눈을 쉬어주세요!<br>3`; playSound('beep_low'); }
-            if (breakTimer === 120) { ui.stageAlert.innerHTML = `잠시 눈을 쉬어주세요!<br>2`; playSound('beep_low'); }
-            if (breakTimer === 60)  { ui.stageAlert.innerHTML = `잠시 눈을 쉬어주세요!<br>1`; playSound('beep_low'); }
-            
-            breakTimer--;
-            
-            if (breakTimer <= 0) {
-                playSound('beep_high'); 
-                ui.stageAlert.style.opacity = 0;
+            if (deltaTime >= fpsInterval) {
+                lastTime = timestamp - (deltaTime % fpsInterval);
+                frameCount++;
+                drawBackground(ctx, canvas.width, canvas.height);
+                player.draw(ctx);
+                particles.forEach(p => { p.update(); p.draw(ctx); });
+                hitboxes.forEach(h => { h.update(); h.draw(ctx); });
                 
-                stage++;
-                requiredKills = Math.floor(CONFIG.baseRequiredKills * Math.pow(CONFIG.difficultyMultiplier, stage - 1)); 
-                if ((stage - 1) % CONFIG.stageForHpIncrease === 0) { player.maxHp++; player.hp++; } else { player.heal(); }
+                if (breakTimer === 180) { ui.stageAlert.innerHTML = `잠시 눈을 쉬어주세요!<br>3`; playSound('beep_low'); }
+                if (breakTimer === 120) { ui.stageAlert.innerHTML = `잠시 눈을 쉬어주세요!<br>2`; playSound('beep_low'); }
+                if (breakTimer === 60)  { ui.stageAlert.innerHTML = `잠시 눈을 쉬어주세요!<br>1`; playSound('beep_low'); }
                 
-                updateUI();
-                gameState = 'PLAYING';
+                breakTimer--;
+                
+                if (breakTimer <= 0) {
+                    playSound('beep_high'); 
+                    ui.stageAlert.style.opacity = 0;
+                    
+                    stage++;
+                    requiredKills = Math.floor(CONFIG.baseRequiredKills * Math.pow(CONFIG.difficultyMultiplier, stage - 1)); 
+                    if ((stage - 1) % CONFIG.stageForHpIncrease === 0) { player.maxHp++; player.hp++; } else { player.heal(); }
+                    
+                    updateUI();
+                    gameState = 'PLAYING';
+                }
             }
             animId = requestAnimationFrame(gameLoop);
             return; 
@@ -1065,18 +1081,24 @@
 
         if (gameState !== 'PLAYING') return;
 
-        frameCount++; drawBackground(ctx, canvas.width, canvas.height);
-        player.update(); player.draw(ctx);
-        if (bossActive && boss.active) { boss.update(); boss.draw(ctx); }
+        // 프레임 제어: 화면 주사율이 120Hz여도 60Hz 속도로 업데이트
+        if (deltaTime >= fpsInterval) {
+            lastTime = timestamp - (deltaTime % fpsInterval);
+            frameCount++; 
+            drawBackground(ctx, canvas.width, canvas.height);
+            player.update(); player.draw(ctx);
+            if (bossActive && boss.active) { boss.update(); boss.draw(ctx); }
 
-        let spawnRate = Math.max(20, Math.floor(100 * Math.pow(1 / CONFIG.difficultyMultiplier, stage - 1))); 
-        if (!bossActive && frameCount % spawnRate === 0) enemies.push(new Enemy());
+            let spawnRate = Math.max(20, Math.floor(100 * Math.pow(1 / CONFIG.difficultyMultiplier, stage - 1))); 
+            if (!bossActive && frameCount % spawnRate === 0) enemies.push(new Enemy());
 
-        [projectiles, enemyProjectiles, hitboxes, enemies, particles, items].forEach(arr => {
-            for (let i = arr.length - 1; i >= 0; i--) { let obj = arr[i]; obj.update(); obj.draw(ctx); if (!obj.active) arr.splice(i, 1); }
-        });
+            [projectiles, enemyProjectiles, hitboxes, enemies, particles, items].forEach(arr => {
+                for (let i = arr.length - 1; i >= 0; i--) { let obj = arr[i]; obj.update(); obj.draw(ctx); if (!obj.active) arr.splice(i, 1); }
+            });
 
-        checkCollisions(); updateUI(); animId = requestAnimationFrame(gameLoop);
+            checkCollisions(); updateUI(); 
+        }
+        animId = requestAnimationFrame(gameLoop);
     }
 
     function bindBtn(id, key) {
