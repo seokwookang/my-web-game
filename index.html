@@ -29,7 +29,6 @@
 
         #stage-alert { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: #ffd700; text-shadow: 0 0 15px #ff0000; font-weight: bold; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 10; text-align: center; line-height: 1.3;}
 
-        /* 버튼 4개 배치를 위해 간격과 크기 소폭 조정 */
         #controller { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 5; pointer-events: none; touch-action: none; }
         .btn { pointer-events: auto; width: 60px; height: 60px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center; font-size: 13px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden; position: relative; transition: transform 0.1s;}
         .btn:active, .btn.active { transform: scale(0.9); }
@@ -48,7 +47,6 @@
             animation: pulse 0.8s infinite alternate; 
         }
 
-        /* === [신규] 보호막 버튼 CSS === */
         .btn-shield { 
             --fill: 0%; 
             background: linear-gradient(to top, rgba(0,191,255,0.7) var(--fill), rgba(255,255,255,0.05) var(--fill)) !important; 
@@ -77,7 +75,7 @@
         .rank-board li { margin-bottom: 5px; color: #ccc; }
 
         .char-select-container { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 900px;}
-        .char-card { background: rgba(0,0,0,0.4); border: 3px solid #aaa; padding: 10px; border-radius: 15px; text-align: center; width: 160px; cursor: pointer; transition: 0.2s; }
+        .char-card { background: rgba(0,0,0,0.4); border: 3px solid #aaa; padding: 10px; border-radius: 15px; text-align: center; width: 150px; cursor: pointer; transition: 0.2s; }
         .char-card:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .char-card h2 { margin: 5px 0; font-size: 16px; }
         .char-card p { font-size: 12px; color: #ccc; margin-top: 5px; line-height: 1.3;}
@@ -171,6 +169,10 @@
                     <h2>🌊 탄제로</h2>
                     <p>물의 호흡 잔상 베기<br>히노카미 화염폭풍</p>
                 </div>
+                <div class="char-card" id="btn-char-g" style="border-color: #2ecc71;">
+                    <h2>🏹 아처맨</h2>
+                    <p>포물선 연사<br>수직 화살비</p>
+                </div>
             </div>
         </div>
 
@@ -225,7 +227,6 @@
     let gameState = 'START'; 
     let score = 0, stage = 1, frameCount = 0, cameraX = 0, bossActive = false, stageKillCount = 0, requiredKills = CONFIG.baseRequiredKills, breakTimer = 0; 
     
-    // 조작키 추가
     const input = { jump: false, attack: false, ult: false, shield: false };
 
     const imgBoss = new Image(); imgBoss.src = ''; 
@@ -268,7 +269,7 @@
             let ranks = JSON.parse(localStorage.getItem('brawlKirbyRanksV2')) || [];
             if(ranks.length === 0) { ui.rankList.innerHTML = "<li>아직 도전자가 없습니다!</li>"; return; }
             ui.rankList.innerHTML = ranks.map((r, index) => {
-                let charName = (r.char === 'A') ? '🦇 다크메타' : ((r.char === 'B') ? '🍣 켄지' : ((r.char === 'C') ? '🧙‍♂️ 마법사' : ((r.char === 'D') ? '⚡ 번개마법사' : ((r.char === 'E') ? '🔫 콜트' : '🌊 탄제로'))));
+                let charName = (r.char === 'A') ? '🦇 다크메타' : ((r.char === 'B') ? '🍣 켄지' : ((r.char === 'C') ? '🧙‍♂️ 마법사' : ((r.char === 'D') ? '⚡ 번개마법사' : ((r.char === 'E') ? '🔫 콜트' : ((r.char === 'F') ? '🌊 탄제로' : '🏹 아처맨')))));
                 return `<li>${index + 1}위 : ${r.score}점 (${charName})</li>`;
             }).join('');
         } catch(e) { ui.rankList.innerHTML = "<li>기록을 불러올 수 없습니다.</li>"; }
@@ -288,13 +289,14 @@
             else if (type === 'boss_hit') { osc.type = 'square'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.2); gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2); osc.start(now); osc.stop(now + 0.2); }
             else if (type === 'explosion') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(10, now + 0.4); gain.gain.setValueAtTime(0.6, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4); osc.start(now); osc.stop(now + 0.4); }
             else if (type === 'fire') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.5); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
-            // === 보호막 켜질 때 효과음 ===
             else if (type === 'shield_on') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.3); gain.gain.setValueAtTime(0.5, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
             else if (type === 'beep_low') { osc.type = 'sine'; osc.frequency.setValueAtTime(440, now); gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2); osc.start(now); osc.stop(now + 0.2); }
             else if (type === 'beep_high') { osc.type = 'sine'; osc.frequency.setValueAtTime(880, now); gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4); osc.start(now); osc.stop(now + 0.4); }
             else if (type === 'stage_clear') { osc.type = 'square'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554.37, now + 0.1); osc.frequency.setValueAtTime(659.25, now + 0.2); osc.frequency.setValueAtTime(880, now + 0.3); gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5); osc.start(now); osc.stop(now + 0.5); }
             else if (type === 'game_over') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(50, now + 1.0); gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0.01, now + 1.0); osc.start(now); osc.stop(now + 1.0); }
             else if (type === 'lightning') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(1200, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.1); osc.frequency.setValueAtTime(1500, now + 0.1); osc.frequency.exponentialRampToValueAtTime(50, now + 0.3); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3); }
+            // [신규] 화살 발사 효과음
+            else if (type === 'arrow') { osc.type = 'triangle'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.1); gain.gain.setValueAtTime(0.4, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
         } catch(e) {}
     }
 
@@ -319,10 +321,9 @@
             this.ultGauge = 0; this.maxUltGauge = 100; 
             this.dashInvincibility = false; this.dashTimer = 0; this.isUltDashing = false; this.ultDashHitEnemies = []; this.attackAnimTimer = 0; 
             
-            // === [신규] 액티브 보호막 관련 변수 ===
             this.shieldGauge = 0; 
             this.maxShieldGauge = 100;
-            this.shieldTimer = 0; // 5초 지속 (300 프레임)
+            this.shieldTimer = 0; 
         }
         update() {
             if (this.dashTimer > 0) { this.dashTimer--; if (this.dashTimer <= 0) { this.dashInvincibility = false; this.isUltDashing = false; if (this.grounded) { this.vx = 0; this.vy = 0; } } }
@@ -333,16 +334,14 @@
             if (this.worldX < 0) this.worldX = 0; let targetCameraX = this.worldX - canvas.width * 0.3; if (targetCameraX < 0) targetCameraX = 0; cameraX += (targetCameraX - cameraX) * 0.1; if (Math.abs(targetCameraX - cameraX) < 0.5) cameraX = targetCameraX;
             if (this.invincibility > 0) this.invincibility--; if (this.atkCooldown > 0) this.atkCooldown--; if (this.attackAnimTimer > 0) this.attackAnimTimer--;
             
-            // 보호막 타이머 감소
             if (this.shieldTimer > 0) this.shieldTimer--;
 
             if (input.attack && this.atkCooldown <= 0) this.attack(); 
             if (input.ult && this.ultGauge >= this.maxUltGauge) this.ultimate();
             
-            // 보호막 기술 발동
             if (input.shield && this.shieldGauge >= this.maxShieldGauge) {
                 this.shieldGauge = 0;
-                this.shieldTimer = 300; // 5초 (60프레임 * 5)
+                this.shieldTimer = 300; 
                 playSound('shield_on');
                 updateUI();
             }
@@ -355,12 +354,15 @@
             else if (this.type === 'B') { playSound('atk'); this.atkCooldown = 20; hitboxes.push(new Hitbox(this, 75, 15, 'base', 1)); particles.push(new Particle(this, 0, 'slash', this.aimAngle)); }
             else if (this.type === 'C') { playSound('atk'); this.atkCooldown = CONFIG.wizardAtkDelay; let isLeft = Math.cos(this.aimAngle) < 0, angle = isLeft ? Math.PI * 0.75 : Math.PI * 0.25, speed = 25, startY = -80, targetY = canvas.height - 45, t = (targetY - startY) / (Math.sin(angle) * speed), targetX = this.worldX + this.w/2 + (isLeft ? -180 : 180) + (this.vx * t * 0.7), startX = targetX - (Math.cos(angle) * speed) * t; projectiles.push(new Projectile(startX, startY, angle, 'meteor', this)); }
             else if (this.type === 'D') { playSound('lightning'); this.atkCooldown = CONFIG.wizardAtkDelay * 0.8; let isLeft = Math.cos(this.aimAngle) < 0, targetY = canvas.height - 45, startY = -targetY * 2, speed = 35, t = (targetY - startY) / speed, targetX = this.worldX + this.w/2 + (isLeft ? -180 : 180) + (this.vx * t * 0.7); projectiles.push(new Projectile(targetX, startY, Math.PI / 2, 'lightning', this)); }
-            // === [리워크] 콜트 1발 발사 ===
-            else if (this.type === 'E') { 
-                playSound('atk'); this.atkCooldown = 25; 
-                projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2 + (Math.random()*6 - 3), this.aimAngle, 'colt_base', this)); 
-            }
+            else if (this.type === 'E') { playSound('atk'); this.atkCooldown = 25; projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2 + (Math.random()*6 - 3), this.aimAngle, 'colt_base', this)); }
             else if (this.type === 'F') { playSound('atk'); this.atkCooldown = 22; hitboxes.push(new Hitbox(this, 85, 12, 'base', 1)); particles.push(new Particle(this, 0, 'water_slash', this.aimAngle)); }
+            // [신규] 아처맨 기본 공격: 조준 각도에서 살짝 위쪽으로 쏴 포물선 생성
+            else if (this.type === 'G') { 
+                playSound('arrow'); this.atkCooldown = 12; 
+                let isLeft = Math.cos(this.aimAngle) < 0;
+                let arcOffset = isLeft ? 0.2 : -0.2; 
+                projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle + arcOffset, 'archer_base', this)); 
+            }
         }
         ultimate() {
             this.ultGauge = 0; updateUI(); 
@@ -368,21 +370,22 @@
             else if (this.type === 'B') { playSound('jump'); this.dashInvincibility = true; this.isUltDashing = true; this.ultDashHitEnemies = []; this.dashTimer = 22; this.vy = Math.sin(this.aimAngle) * 30; this.vx = Math.cos(this.aimAngle) * 30; }
             else if (this.type === 'C') { playSound('jump'); let isLeft = Math.cos(this.aimAngle) < 0, angle = isLeft ? Math.PI * 0.75 : Math.PI * 0.25, speed = 18, startY = -canvas.height/2, targetY = canvas.height - 45, t = (targetY - startY) / (Math.sin(angle) * speed), targetX = this.worldX + this.w/2 + (isLeft ? -200 : 200) + (this.vx * t * 0.6), startX = targetX - (Math.cos(angle) * speed) * t; projectiles.push(new Projectile(startX, startY, angle, 'sun_demise', this)); }
             else if (this.type === 'D') { playSound('lightning'); playSound('explosion'); let isLeft = Math.cos(this.aimAngle) < 0, targetY = canvas.height - 45, startY = -targetY * 3, speed = 40, t = (targetY - startY) / speed; for (let i = 0; i < 5; i++) { let baseDist = 150 + (i * 40), targetX = this.worldX + this.w/2 + (isLeft ? -baseDist : baseDist) + (this.vx * t * 0.6); projectiles.push(new Projectile(targetX, startY, Math.PI / 2, 'ult_lightning', this)); } }
-            // === [리워크] 콜트 5발 관통 사격 ===
-            else if (this.type === 'E') { 
-                playSound('jump'); playSound('atk'); 
-                let isLeft = Math.cos(this.aimAngle) < 0; 
-                for (let i = 0; i < 5; i++) { 
-                    let offset = isLeft ? (i * 40) : -(i * 40); 
-                    projectiles.push(new Projectile(this.worldX + this.w/2 + offset, this.y + this.h/2 + (Math.random()*16 - 8), this.aimAngle, 'colt_ult', this)); 
+            else if (this.type === 'E') { playSound('jump'); playSound('atk'); let isLeft = Math.cos(this.aimAngle) < 0; for (let i = 0; i < 5; i++) { let offset = isLeft ? (i * 40) : -(i * 40); projectiles.push(new Projectile(this.worldX + this.w/2 + offset, this.y + this.h/2 + (Math.random()*16 - 8), this.aimAngle, 'colt_ult', this)); } }
+            else if (this.type === 'F') { playSound('jump'); playSound('fire'); if(this.grounded) { this.vy = -8; this.grounded = false; } projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'hinokami_storm', this)); }
+            // [신규] 아처맨 궁극기: 넓은 반경에서 10개의 화살 수직 투하
+            else if (this.type === 'G') { 
+                playSound('jump'); playSound('arrow');
+                let isLeft = Math.cos(this.aimAngle) < 0;
+                let centerX = this.worldX + (isLeft ? -200 : 200); 
+                for (let i = 0; i < 10; i++) { 
+                    let startX = centerX + (Math.random() * 800 - 400); 
+                    let startY = -Math.random() * 400 - 100; 
+                    projectiles.push(new Projectile(startX, startY, Math.PI / 2, 'archer_ult', this)); 
                 } 
             }
-            else if (this.type === 'F') { playSound('jump'); playSound('fire'); if(this.grounded) { this.vy = -8; this.grounded = false; } projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'hinokami_storm', this)); }
         }
         takeDamage() { 
-            // 보호막 구체가 유지되는 동안 몬스터에게 닿아도 피해 없음 (무적)
             if (this.shieldTimer > 0) return; 
-
             if (this.invincibility > 0 || this.dashInvincibility) return; 
             this.hp--; playSound('hit'); this.invincibility = 60; updateUI(); 
             if (this.hp <= 0) { gameState = 'GAMEOVER'; saveRank(score, this.type); playSound('game_over'); ui.finalScore.innerText = `최종 점수: ${score}점`; ui.gameover.style.display = 'flex'; ui.ctrl.style.display = 'none'; joy.active = false; } 
@@ -398,21 +401,33 @@
             else if (this.type === 'D') { ctx.fillStyle = '#1e3799'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-18, 20); ctx.lineTo(18, 20); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(-18, -10); ctx.lineTo(18, -10); ctx.lineTo(0, -38); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(12, 5); ctx.rotate(Math.PI/2); ctx.translate(-12, -5); } ctx.fillStyle = '#784212'; ctx.fillRect(10, -15, 4, 30); ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.arc(12, -15, 7, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(10, -17, 3, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
             else if (this.type === 'E') { ctx.fillStyle = '#2980b9'; ctx.beginPath(); ctx.moveTo(-15, -10); ctx.lineTo(-15, 20); ctx.lineTo(15, 20); ctx.lineTo(15, -10); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(-2, -15, 10, 0, Math.PI*2); ctx.arc(8, -10, 8, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(15, 5); ctx.rotate(Math.PI/6); ctx.translate(-15, -5); } ctx.fillStyle = '#95a5a6'; ctx.fillRect(10, 0, 15, 6); ctx.fillRect(10, 6, 4, 8); ctx.restore(); }
             else if (this.type === 'F') { ctx.fillStyle = '#16a085'; ctx.fillRect(-15, -8, 30, 28); ctx.fillStyle = '#000'; ctx.fillRect(-15, -8, 10, 10); ctx.fillRect(5, -8, 10, 10); ctx.fillRect(-5, 2, 10, 10); ctx.fillRect(-15, 12, 10, 8); ctx.fillRect(5, 12, 10, 8); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -8, 14, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(-10, -18); ctx.lineTo(-5, -15); ctx.lineTo(-8, -12); ctx.fill(); ctx.fillStyle = '#341f97'; ctx.beginPath(); ctx.arc(0, -15, 15, Math.PI, 0); ctx.fill(); ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(-18, -5); ctx.lineTo(-10, -10); ctx.fill(); ctx.beginPath(); ctx.moveTo(15, -15); ctx.lineTo(18, -5); ctx.lineTo(10, -10); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-5, -10, 3, 4); ctx.fillRect(3, -10, 3, 4); ctx.save(); let isAtk = this.attackAnimTimer > 0; ctx.translate(12, 8); if(isAtk) ctx.rotate(Math.PI/8); ctx.fillStyle = (input.ult && this.ultGauge >= this.maxUltGauge) ? '#ff3300' : '#111'; ctx.fillRect(0, -2, 35, 4); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.fillRect(-8, -2, 8, 4); ctx.restore(); }
-            
-            // === [신규] 액티브 보호막 구체 그리기 (항상 플레이어 따라다님) ===
-            if (this.shieldTimer > 0) {
-                if(isLeft) ctx.scale(-1, 1); // 스케일 원복
-                let alpha = (this.shieldTimer / 300) * 0.8; // 서서히 투명해지게 처리
+            // [신규] 아처맨 디자인: 초록옷, 초록 꼬깔모자, 빨간 깃털, 활
+            else if (this.type === 'G') {
+                ctx.fillStyle = '#27ae60'; ctx.fillRect(-15, -10, 30, 30); // 몸
+                ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -10, 15, 0, Math.PI*2); ctx.fill(); // 얼굴
+                ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(15, -15); ctx.lineTo(0, -35); ctx.fill(); // 모자
+                ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(-10, -40); ctx.stroke(); // 깃털
+                ctx.fillStyle = '#000'; ctx.fillRect(-6, -12, 3, 3); ctx.fillRect(4, -12, 3, 3); // 눈
                 ctx.save();
-                ctx.rotate(frameCount * 0.15); // 탄제로 궁극기처럼 뱅글뱅글 돎
+                if(this.attackAnimTimer > 0) { ctx.translate(15, 5); } else { ctx.translate(10, 5); }
+                ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 3; 
+                ctx.beginPath(); ctx.arc(0, 0, 15, -Math.PI/2, Math.PI/2); ctx.stroke(); // 활 테두리
+                ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(this.attackAnimTimer > 0 ? -10 : 0, 0); ctx.lineTo(0, 15); ctx.stroke(); // 활시위
+                ctx.restore();
+            }
+            
+            if (this.shieldTimer > 0) {
+                if(isLeft) ctx.scale(-1, 1); 
+                let alpha = (this.shieldTimer / 300) * 0.8; 
+                ctx.save();
+                ctx.rotate(frameCount * 0.15); 
                 ctx.globalAlpha = alpha;
-                
-                // 푸른색 계열의 겹겹이 쌓인 원형
-                ctx.fillStyle = '#00BFFF'; // 딥스카이블루
+                ctx.fillStyle = '#00BFFF'; 
                 ctx.beginPath(); ctx.arc(0, 0, 65, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#87CEFA'; // 라이트스카이블루
+                ctx.fillStyle = '#87CEFA'; 
                 ctx.beginPath(); ctx.arc(20, 0, 45, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#E0FFFF'; // 라이트시안
+                ctx.fillStyle = '#E0FFFF'; 
                 ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI*2); ctx.fill();
                 ctx.restore();
             }
@@ -446,14 +461,59 @@
 
     class Projectile {
         constructor(x, y, angle, type, owner) {
-            this.worldX = x; this.y = y; this.angle = angle; this.type = type; this.owner = owner; this.startX = x; this.piercing = (type === 'colt_ult'); this.hitEnemies = []; 
-            let speed = 11; if(type === 'ult_A') speed = 14; if(type === 'boss_atk') speed = 3 + (stage*0.5); if(type === 'meteor') speed = 25; if(type === 'sun_demise') speed = 18; if(type === 'lightning') speed = 35; if(type === 'ult_lightning') speed = 40; if(type === 'colt_base') speed = 20; if(type === 'colt_ult') speed = 25; if(type === 'hinokami_storm') speed = 18;
-            this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-            this.w = 35; if(type === 'ult_A') this.w = 50; if(type === 'boss_atk') this.w = 20; if(type === 'meteor') this.w = 40; if(type === 'sun_demise') this.w = canvas.height / 2; if(type === 'lightning') this.w = 25; if(type === 'ult_lightning') this.w = 30; if(type === 'colt_base') this.w = 15; if(type === 'colt_ult') this.w = 25; if(type === 'hinokami_storm') this.w = 45;
+            this.worldX = x; this.y = y; this.angle = angle; this.type = type; this.owner = owner; this.startX = x; 
+            // [수정] 콜트와 아처맨 궁극기에 관통 속성 부여
+            this.piercing = (type === 'colt_ult' || type === 'archer_ult'); 
+            this.hitEnemies = []; 
+            this.gravity = 0; // [신규] 아처맨 포물선용 중력
+
+            let speed = 11; 
+            if(type === 'ult_A') speed = 14; 
+            if(type === 'boss_atk') speed = 3 + (stage*0.5); 
+            if(type === 'meteor') speed = 25; 
+            if(type === 'sun_demise') speed = 18; 
+            if(type === 'lightning') speed = 35; 
+            if(type === 'ult_lightning') speed = 40; 
+            if(type === 'colt_base') speed = 20; 
+            if(type === 'colt_ult') speed = 25; 
+            if(type === 'hinokami_storm') speed = 18;
+            if(type === 'archer_base') { speed = 16; this.gravity = 0.6; } // 아처 포물선 설정
+            if(type === 'archer_ult') speed = 25;
+
+            this.vx = Math.cos(angle) * speed; 
+            this.vy = Math.sin(angle) * speed;
+            this.w = 35; 
+            if(type === 'ult_A') this.w = 50; 
+            if(type === 'boss_atk') this.w = 20; 
+            if(type === 'meteor') this.w = 40; 
+            if(type === 'sun_demise') this.w = canvas.height / 2; 
+            if(type === 'lightning') this.w = 25; 
+            if(type === 'ult_lightning') this.w = 30; 
+            if(type === 'colt_base') this.w = 15; 
+            if(type === 'colt_ult') this.w = 25; 
+            if(type === 'hinokami_storm') this.w = 45;
+            if(type === 'archer_base') this.w = 30;
+            if(type === 'archer_ult') this.w = 40;
+
             this.h = this.w; this.active = true;
         }
         update() {
+            // [신규] 아처맨 기본 공격은 중력을 받아 속도와 각도가 변함
+            if (this.type === 'archer_base') {
+                this.vy += this.gravity;
+                this.angle = Math.atan2(this.vy, this.vx);
+            }
+
             this.worldX += this.vx; this.y += this.vy;
+
+            // [수정] 아처맨 화살은 땅(canvas.height - 45)에 닿으면 즉시 소멸
+            if (this.type === 'archer_base' || this.type === 'archer_ult') {
+                if (this.y >= canvas.height - 45) {
+                    this.active = false;
+                    for(let i=0; i<3; i++) particles.push(new Particle(this.worldX, this.y, 'exp', 0));
+                }
+            }
+
             if (this.type === 'base_A' || this.type === 'ult_A' || this.type === 'colt_base' || this.type === 'colt_ult') { let distanceTraveled = Math.sqrt(Math.pow(this.worldX - this.startX, 2)), maxRange = (this.type.includes('colt')) ? canvas.width * 0.7 : canvas.width / 2; if (distanceTraveled > maxRange) { this.active = false; for(let i=0; i<3; i++) particles.push(new Particle(this.worldX, this.y, 'exp', 0)); } }
             if (this.type === 'meteor' || this.type === 'sun_demise' || this.type === 'lightning' || this.type === 'ult_lightning') { if (this.y + this.h/2 >= canvas.height - 45) { this.explode(); } }
             if (this.type === 'hinokami_storm') { let distanceTraveled = Math.sqrt(Math.pow(this.worldX - this.startX, 2)); if (distanceTraveled > canvas.width * 0.4) { this.explode(); } }
@@ -472,6 +532,12 @@
             else if (this.type === 'lightning' || this.type === 'ult_lightning') { let tailLen = (this.type === 'lightning') ? 150 : 250; ctx.strokeStyle = '#ffd700'; ctx.lineWidth = (this.type === 'lightning') ? 4 : 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, 0); let segs = 5, segW = tailLen / segs, zig = (this.type === 'lightning') ? 10 : 15; for(let i=1; i<=segs; i++) { let oy = (i % 2 === 0) ? zig : -zig; if(i === segs) oy = 0; ctx.lineTo(-segW * i, oy); } ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.lineWidth = (this.type === 'lightning') ? 1.5 : 2.5; ctx.stroke(); if(this.type === 'ult_lightning') { ctx.strokeStyle = 'rgba(142, 68, 173, 0.5)'; ctx.lineWidth = 15; ctx.stroke(); } }
             else if (this.type === 'colt_base' || this.type === 'colt_ult') { ctx.fillStyle = this.type === 'colt_ult' ? '#ff3300' : '#f1c40f'; ctx.beginPath(); ctx.ellipse(0, 0, this.w/2, this.w/4, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(this.w/4, -this.w/8, this.w/6, this.w/8, 0, 0, Math.PI*2); ctx.fill(); }
             else if (this.type === 'hinokami_storm') { ctx.rotate(frameCount * 0.2); ctx.fillStyle = '#ff4500'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ff8c00'; ctx.beginPath(); ctx.arc(this.w/4, 0, this.w/4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 0, this.w/5, 0, Math.PI*2); ctx.fill(); }
+            // [신규] 화살 디자인
+            else if (this.type === 'archer_base' || this.type === 'archer_ult') { 
+                ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-this.w/2, 0); ctx.lineTo(this.w/2, 0); ctx.stroke(); // 나무 막대
+                ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.moveTo(this.w/2, 0); ctx.lineTo(this.w/2 - 8, -5); ctx.lineTo(this.w/2 - 8, 5); ctx.fill(); // 촉
+                ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-this.w/2, 0); ctx.lineTo(-this.w/2 + 5, -5); ctx.moveTo(-this.w/2, 0); ctx.lineTo(-this.w/2 + 5, 5); ctx.stroke(); // 깃털
+            }
             else { ctx.strokeStyle = this.type === 'ult_A' ? '#ff00ff' : '#00ffff'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, -Math.PI/2.5, Math.PI/2.5, false); ctx.stroke(); } ctx.restore();
         }
     }
@@ -522,9 +588,7 @@
             e.active = false; score += 50; playSound('hit'); stageKillCount++; 
             let chargeAmount = 100 / CONFIG.ultKillRequirement; 
             player.ultGauge = Math.min(player.maxUltGauge, player.ultGauge + chargeAmount); 
-            // === [추가] 쉴드 게이지 충전 ===
             player.shieldGauge = Math.min(player.maxShieldGauge, player.shieldGauge + chargeAmount);
-            
             for(let i=0; i<6; i++) particles.push(new Particle(e.worldX, e.y, 'exp', 0)); 
             if(Math.random() < CONFIG.appleDropRate) items.push(new Item(e.worldX, e.y)); 
         };
@@ -534,21 +598,17 @@
         hitboxes.forEach(h => { if(h instanceof Hitbox) { enemies.forEach(e => { if (h.active && e.active && isConeCollide(h, e) && !h.hitEnemies.includes(e)) { h.hitEnemies.push(e); killEnemy(e); } }); if (h.active && bossActive && boss.active && isConeCollide(h, boss) && !h.hitEnemies.includes(boss)) { h.hitEnemies.push(boss); boss.takeDamage(h.damage); } } else if (h instanceof StaticHitbox) { enemies.forEach(e => { if (h.active && e.active && isCircleRectCollide(h.worldX, h.y, h.radius, e)) { if(h.type === 'fire_dot') { killEnemy(e); } else if(!h.hitEnemies.includes(e)) { h.hitEnemies.push(e); killEnemy(e); } } }); if (h.active && bossActive && boss.active && isCircleRectCollide(h.worldX, h.y, h.radius, boss)) { if(h.type === 'fire_dot') { if(h.tickTimer % 60 === 0 && h.tickTimer > 0) { boss.takeDamage(1); } } else if (!h.hitEnemies.includes(boss)) { h.hitEnemies.push(boss); boss.takeDamage(h.damage); } } } });
         if (stageKillCount >= requiredKills && !bossActive) { boss = new Boss(); enemies = []; ui.stageAlert.innerText = `WARNING: BOSS APPROACHING!`; ui.stageAlert.style.color = '#ff0000'; ui.stageAlert.style.opacity = 1; setTimeout(() => { ui.stageAlert.style.opacity = 0; }, 2000); }
         
-        // 캐릭터 피격 판정
         enemies.forEach(e => { if (e.active && isCollide(player, e)) player.takeDamage(); }); 
         
         enemyProjectiles.forEach(ep => { 
             if (ep.active) { 
-                // === [신규] 적 투사체 원천 차단 로직 (쉴드가 있을 때 튕겨냄) ===
                 let blocked = false;
                 if (player.shieldTimer > 0) {
                     let dx = (ep.worldX + ep.w/2) - (player.worldX + player.w/2);
                     let dy = (ep.y + ep.h/2) - (player.y + player.h/2);
-                    // 쉴드 반지름 대략 65
                     if (Math.sqrt(dx*dx + dy*dy) < 65 + ep.w/2) {
                         ep.active = false; 
                         blocked = true;
-                        // 막힌 효과음(없으면 통과) 및 파티클
                         for(let i=0; i<3; i++) particles.push(new Particle(ep.worldX, ep.y, 'water_slash', 0));
                     }
                 }
@@ -570,7 +630,6 @@
         ui.btnUlt.style.setProperty('--fill', `${ultPercent}%`); 
         player.ultGauge >= player.maxUltGauge ? ui.btnUlt.classList.add('ready') : ui.btnUlt.classList.remove('ready'); 
 
-        // === 보호막 버튼 UI 업데이트 ===
         let shieldPercent = (player.shieldGauge / player.maxShieldGauge) * 100;
         ui.btnShield.style.setProperty('--fill', `${shieldPercent}%`);
         player.shieldGauge >= player.maxShieldGauge ? ui.btnShield.classList.add('ready') : ui.btnShield.classList.remove('ready');
@@ -586,14 +645,15 @@
     function bindBtn(id, key) { const btn = document.getElementById(id), press = (e) => { e.preventDefault(); input[key] = true; btn.classList.add('active'); }, release = (e) => { e.preventDefault(); input[key] = false; btn.classList.remove('active'); }; btn.addEventListener('touchstart', press, {passive: false}); btn.addEventListener('touchend', release, {passive: false}); btn.addEventListener('mousedown', press); window.addEventListener('mouseup', () => { input[key] = false; btn.classList.remove('active'); }); }
     
     bindBtn('btn-jump', 'jump'); bindBtn('btn-atk', 'attack'); bindBtn('btn-ult', 'ult'); 
-    bindBtn('btn-shield', 'shield'); // 쉴드 버튼 바인딩
+    bindBtn('btn-shield', 'shield'); 
 
     const bindChar = (id, type) => {
         const btn = document.getElementById(id);
         const handler = (e) => { if (e.type === 'touchstart') e.preventDefault(); initGame(type); };
         btn.addEventListener('touchstart', handler, {passive: false}); btn.addEventListener('click', handler);
     };
-    bindChar('btn-char-a', 'A'); bindChar('btn-char-b', 'B'); bindChar('btn-char-c', 'C'); bindChar('btn-char-d', 'D'); bindChar('btn-char-e', 'E'); bindChar('btn-char-f', 'F');
+    bindChar('btn-char-a', 'A'); bindChar('btn-char-b', 'B'); bindChar('btn-char-c', 'C'); bindChar('btn-char-d', 'D'); bindChar('btn-char-e', 'E'); bindChar('btn-char-f', 'F'); 
+    bindChar('btn-char-g', 'G'); // 아처맨 바인딩
 </script>
 </body>
 </html>
