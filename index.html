@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>별의 커비 Vs 브롤 스타즈 (v1.1)</title>
+    <title>별의 커비 Vs 브롤 스타즈 (v1.2)</title>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         
@@ -328,13 +328,11 @@
             this.maxShieldGauge = 100;
             this.shieldTimer = 0; 
             
-            // [신규 추가] 불덩이(H) 궁극기 보스 다단히트 쿨타임
             this.blueFireHitDelay = 0;
         }
         update() {
             if (this.dashTimer > 0) { 
                 this.dashTimer--; 
-                // [신규 추가] 불덩이 궁극기 돌진 중 화면 끝 도달 시 정지
                 if (this.type === 'H' && this.isUltDashing) {
                     let nextScreenX = (this.worldX + this.vx) - cameraX;
                     if (nextScreenX <= 0 || nextScreenX + this.w >= canvas.width) {
@@ -351,7 +349,6 @@
             if (this.invincibility > 0) this.invincibility--; if (this.atkCooldown > 0) this.atkCooldown--; if (this.attackAnimTimer > 0) this.attackAnimTimer--;
             
             if (this.shieldTimer > 0) this.shieldTimer--;
-            // [신규 추가] 불덩이 보스 타격 쿨타임 감소
             if (this.blueFireHitDelay > 0) this.blueFireHitDelay--;
 
             if (input.attack && this.atkCooldown <= 0) this.attack(); 
@@ -375,7 +372,6 @@
             else if (this.type === 'E') { playSound('atk'); this.atkCooldown = 25; projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2 + (Math.random()*6 - 3), this.aimAngle, 'colt_base', this)); }
             else if (this.type === 'F') { playSound('atk'); this.atkCooldown = 22; hitboxes.push(new Hitbox(this, 85, 12, 'base', 1)); particles.push(new Particle(this, 0, 'water_slash', this.aimAngle)); }
             else if (this.type === 'G') { playSound('arrow'); this.atkCooldown = 12; let isLeft = Math.cos(this.aimAngle) < 0; let arcOffset = isLeft ? 0.2 : -0.2; projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle + arcOffset, 'archer_base', this)); }
-            // [신규 추가] 불덩이 기본 공격: 팩맨 화염구 단발 발사
             else if (this.type === 'H') {
                 let hasPacman = projectiles.some(p => p.active && p.type === 'fireball_pacman');
                 if (!hasPacman) {
@@ -394,14 +390,14 @@
             else if (this.type === 'E') { playSound('jump'); playSound('atk'); let isLeft = Math.cos(this.aimAngle) < 0; for (let i = 0; i < 5; i++) { let offset = isLeft ? (i * 40) : -(i * 40); projectiles.push(new Projectile(this.worldX + this.w/2 + offset, this.y + this.h/2 + (Math.random()*16 - 8), this.aimAngle, 'colt_ult', this)); } }
             else if (this.type === 'F') { playSound('jump'); playSound('fire'); if(this.grounded) { this.vy = -8; this.grounded = false; } projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'hinokami_storm', this)); }
             else if (this.type === 'G') { playSound('jump'); playSound('arrow'); let isLeft = Math.cos(this.aimAngle) < 0; let centerX = this.worldX + (isLeft ? -200 : 200); for (let i = 0; i < 10; i++) { let startX = centerX + (Math.random() * 800 - 400); let startY = -Math.random() * 400 - 100; projectiles.push(new Projectile(startX, startY, Math.PI / 2, 'archer_ult', this)); } }
-            // [신규 추가] 불덩이 궁극기: 거대 파란 불꽃 돌진 (평소 1.5배속, 시간 연장)
+            // [v1.2 수정] 불덩이 궁극기 속도를 팩맨의 절반(2.25)으로 낮추고, 지속시간을 150으로 연장
             else if (this.type === 'H') {
                 playSound('jump'); playSound('fire');
                 this.dashInvincibility = true;
                 this.isUltDashing = true;
                 this.ultDashHitEnemies = [];
-                this.dashTimer = 80;
-                let dashSpeed = this.speed * 1.5;
+                this.dashTimer = 150; // 속도가 느려진 만큼 지속시간 연장
+                let dashSpeed = 2.25; // 팩맨 기본공격(4.5)의 절반
                 this.vy = Math.sin(this.aimAngle) * dashSpeed;
                 this.vx = Math.cos(this.aimAngle) * dashSpeed;
                 this.blueFireHitDelay = 0;
@@ -425,7 +421,6 @@
             else if (this.type === 'E') { ctx.fillStyle = '#2980b9'; ctx.beginPath(); ctx.moveTo(-15, -10); ctx.lineTo(-15, 20); ctx.lineTo(15, 20); ctx.lineTo(15, -10); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(-2, -15, 10, 0, Math.PI*2); ctx.arc(8, -10, 8, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(15, 5); ctx.rotate(Math.PI/6); ctx.translate(-15, -5); } ctx.fillStyle = '#95a5a6'; ctx.fillRect(10, 0, 15, 6); ctx.fillRect(10, 6, 4, 8); ctx.restore(); }
             else if (this.type === 'F') { ctx.fillStyle = '#16a085'; ctx.fillRect(-15, -8, 30, 28); ctx.fillStyle = '#000'; ctx.fillRect(-15, -8, 10, 10); ctx.fillRect(5, -8, 10, 10); ctx.fillRect(-5, 2, 10, 10); ctx.fillRect(-15, 12, 10, 8); ctx.fillRect(5, 12, 10, 8); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -8, 14, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(-10, -18); ctx.lineTo(-5, -15); ctx.lineTo(-8, -12); ctx.fill(); ctx.fillStyle = '#341f97'; ctx.beginPath(); ctx.arc(0, -15, 15, Math.PI, 0); ctx.fill(); ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(-18, -5); ctx.lineTo(-10, -10); ctx.fill(); ctx.beginPath(); ctx.moveTo(15, -15); ctx.lineTo(18, -5); ctx.lineTo(10, -10); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-5, -10, 3, 4); ctx.fillRect(3, -10, 3, 4); ctx.save(); let isAtk = this.attackAnimTimer > 0; ctx.translate(12, 8); if(isAtk) ctx.rotate(Math.PI/8); ctx.fillStyle = (input.ult && this.ultGauge >= this.maxUltGauge) ? '#ff3300' : '#111'; ctx.fillRect(0, -2, 35, 4); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.fillRect(-8, -2, 8, 4); ctx.restore(); }
             else if (this.type === 'G') { ctx.fillStyle = '#27ae60'; ctx.fillRect(-15, -10, 30, 30); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -10, 15, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(15, -15); ctx.lineTo(0, -35); ctx.fill(); ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(-10, -40); ctx.stroke(); ctx.fillStyle = '#000'; ctx.fillRect(-6, -12, 3, 3); ctx.fillRect(4, -12, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(15, 5); } else { ctx.translate(10, 5); } ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 15, -Math.PI/2, Math.PI/2); ctx.stroke(); ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(this.attackAnimTimer > 0 ? -10 : 0, 0); ctx.lineTo(0, 15); ctx.stroke(); ctx.restore(); }
-            // [신규 추가] 불덩이 외형 디자인
             else if (this.type === 'H') {
                 if (this.isUltDashing) {
                     ctx.fillStyle = '#00aaff'; ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI*2); ctx.fill();
@@ -483,7 +478,6 @@
     class Projectile {
         constructor(x, y, angle, type, owner) {
             this.worldX = x; this.y = y; this.angle = angle; this.type = type; this.owner = owner; this.startX = x; 
-            // [신규 추가] 불팩맨(fireball_pacman) 관통 속성 부여
             this.piercing = (type === 'colt_ult' || type === 'archer_ult' || type === 'fireball_pacman'); 
             this.hitEnemies = []; 
             this.gravity = 0; 
@@ -500,7 +494,6 @@
             if(type === 'hinokami_storm') speed = 18;
             if(type === 'archer_base') { speed = 16; this.gravity = 0.6; } 
             if(type === 'archer_ult') speed = 25;
-            // [신규 추가] 불팩맨 속도 (캐릭터처럼 천천히)
             if(type === 'fireball_pacman') speed = 4.5;
 
             this.vx = Math.cos(angle) * speed; 
@@ -517,10 +510,11 @@
             if(type === 'hinokami_storm') this.w = 45;
             if(type === 'archer_base') this.w = 30;
             if(type === 'archer_ult') this.w = 40;
-            // [신규 추가] 불팩맨 크기 (보스 발사체 크기와 동일)
             if(type === 'fireball_pacman') this.w = 20;
 
             this.h = this.w; this.active = true;
+            // [v1.2 신규] 불팩맨 보스 다단히트 개별 쿨타임
+            this.pacmanBossHitDelay = 0;
         }
         update() {
             if (this.type === 'archer_base') {
@@ -529,11 +523,14 @@
             }
 
             this.worldX += this.vx; this.y += this.vy;
+            
+            // [v1.2 신규] 불팩맨 데미지 쿨타임 감소
+            if (this.pacmanBossHitDelay > 0) this.pacmanBossHitDelay--;
 
-            // [신규 추가] 불팩맨 화면 끝 도달 시 소멸 로직
+            // [v1.2 수정] 상/하/좌/우 화면 경계를 약간이라도 벗어나면 즉시 소멸되도록 보완
             if (this.type === 'fireball_pacman') {
                 let sx = this.worldX - cameraX;
-                if (sx < 0 || sx > canvas.width) {
+                if (sx < -this.w || sx > canvas.width + this.w || this.y < -this.w || this.y > canvas.height + this.w) {
                     this.active = false;
                 }
             }
@@ -568,7 +565,6 @@
                 ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.moveTo(this.w/2, 0); ctx.lineTo(this.w/2 - 8, -5); ctx.lineTo(this.w/2 - 8, 5); ctx.fill(); 
                 ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-this.w/2, 0); ctx.lineTo(-this.w/2 + 5, -5); ctx.moveTo(-this.w/2, 0); ctx.lineTo(-this.w/2 + 5, 5); ctx.stroke(); 
             }
-            // [신규 추가] 불팩맨 렌더링 (입 벌리는 애니메이션)
             else if (this.type === 'fireball_pacman') {
                 let mouthOpen = Math.abs(Math.sin(frameCount * 0.15)) * 0.7;
                 ctx.fillStyle = '#ff4500';
@@ -632,16 +628,49 @@
             if(Math.random() < CONFIG.appleDropRate) items.push(new Item(e.worldX, e.y)); 
         };
 
-        projectiles.forEach(p => { enemies.forEach(e => { if (p.active && e.active && isCollide(p, e)) { if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning' || p.type === 'hinokami_storm') { p.explode(); } else { if (p.piercing) { if (!p.hitEnemies.includes(e)) { p.hitEnemies.push(e); killEnemy(e); } } else { killEnemy(e); p.active = false; } } } }); if (p.active && bossActive && boss.active && isCollide(p, boss)) { if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning' || p.type === 'hinokami_storm') { p.explode(); } else { if (p.piercing) { if (!p.hitEnemies.includes(boss)) { p.hitEnemies.push(boss); boss.takeDamage(1); } } else { boss.takeDamage(1); p.active = false; } } } });
+        projectiles.forEach(p => { 
+            enemies.forEach(e => { 
+                if (p.active && e.active && isCollide(p, e)) { 
+                    if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning' || p.type === 'hinokami_storm') { 
+                        p.explode(); 
+                    } else { 
+                        if (p.piercing) { 
+                            if (!p.hitEnemies.includes(e)) { p.hitEnemies.push(e); killEnemy(e); } 
+                        } else { 
+                            killEnemy(e); p.active = false; 
+                        } 
+                    } 
+                } 
+            }); 
+            if (p.active && bossActive && boss.active && isCollide(p, boss)) { 
+                if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning' || p.type === 'hinokami_storm') { 
+                    p.explode(); 
+                } else { 
+                    if (p.piercing) { 
+                        // [v1.2 신규] 불팩맨 보스 다단히트 적용 (궁극기 15보다 긴 45프레임 주기)
+                        if (p.type === 'fireball_pacman') {
+                            if (p.pacmanBossHitDelay <= 0) {
+                                boss.takeDamage(1);
+                                p.pacmanBossHitDelay = 45; // 0.75초 간격으로 타격
+                            }
+                        } else if (!p.hitEnemies.includes(boss)) { 
+                            p.hitEnemies.push(boss); boss.takeDamage(1); 
+                        } 
+                    } else { 
+                        boss.takeDamage(1); p.active = false; 
+                    } 
+                } 
+            } 
+        });
         
-        // [신규 추가] 불덩이 궁극기와 켄지 궁극기의 보스 타격 분리
         if (player.isUltDashing) { 
             enemies.forEach(e => { if (e.active && isCollide(player, e) && !player.ultDashHitEnemies.includes(e)) { player.ultDashHitEnemies.push(e); killEnemy(e); } }); 
             if (bossActive && boss.active && isCollide(player, boss)) {
                 if (player.type === 'H') {
+                    // [v1.2 수정] 궁극기 다단히트 간격을 더욱 짧게(15프레임, 0.25초) 수정
                     if (player.blueFireHitDelay <= 0) {
                         boss.takeDamage(1);
-                        player.blueFireHitDelay = 30; // 0.5초(30프레임) 쿨타임
+                        player.blueFireHitDelay = 15; 
                     }
                 } else if (player.type === 'B' && !player.ultDashHitEnemies.includes(boss)) {
                     player.ultDashHitEnemies.push(boss); boss.takeDamage(CONFIG.kenjiUltDamage); 
@@ -656,7 +685,6 @@
         
         enemyProjectiles.forEach(ep => { 
             if (ep.active) { 
-                // [신규 추가] 불팩맨이 적 투사체를 먹어치움 (보호막 판정 이전)
                 let pacmanEaten = false;
                 projectiles.forEach(p => {
                     if (p.active && p.type === 'fireball_pacman' && isCollide(p, ep)) {
@@ -719,7 +747,7 @@
     };
     bindChar('btn-char-a', 'A'); bindChar('btn-char-b', 'B'); bindChar('btn-char-c', 'C'); bindChar('btn-char-d', 'D'); bindChar('btn-char-e', 'E'); bindChar('btn-char-f', 'F'); 
     bindChar('btn-char-g', 'G'); 
-    bindChar('btn-char-h', 'H'); // [신규 추가] 불덩이 바인딩
+    bindChar('btn-char-h', 'H'); 
 </script>
 </body>
 </html>
