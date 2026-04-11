@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>별의 커비 Vs 브롤 스타즈</title>
+    <title>별의 커비 Vs 브롤 스타즈 (v1.1)</title>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         
@@ -327,26 +327,21 @@
             this.shieldGauge = 0; 
             this.maxShieldGauge = 100;
             this.shieldTimer = 0; 
-
-            // [신규] 불덩이 궁극기 대형 적(보스) 다단 히트 타이머
+            
+            // [신규 추가] 불덩이(H) 궁극기 보스 다단히트 쿨타임
             this.blueFireHitDelay = 0;
         }
         update() {
             if (this.dashTimer > 0) { 
                 this.dashTimer--; 
-
-                // [신규] 불덩이 궁극기: 화면 끝 도달 시 돌진 멈춤
+                // [신규 추가] 불덩이 궁극기 돌진 중 화면 끝 도달 시 정지
                 if (this.type === 'H' && this.isUltDashing) {
                     let nextScreenX = (this.worldX + this.vx) - cameraX;
                     if (nextScreenX <= 0 || nextScreenX + this.w >= canvas.width) {
-                        this.vx = 0; // 경계에서 정지
+                        this.vx = 0;
                     }
                 }
-
-                if (this.dashTimer <= 0) { 
-                    this.dashInvincibility = false; this.isUltDashing = false; 
-                    if (this.grounded) { this.vx = 0; this.vy = 0; } 
-                } 
+                if (this.dashTimer <= 0) { this.dashInvincibility = false; this.isUltDashing = false; if (this.grounded) { this.vx = 0; this.vy = 0; } } 
             }
             if (!this.dashInvincibility) { if (joy.active) { this.vx = joy.normX * this.speed; this.aimAngle = joy.angle; } else { this.vx *= 0.8; if (Math.abs(this.vx) < 0.1) this.vx = 0; if (Math.abs(this.vx) > 0.5) this.aimAngle = this.vx > 0 ? 0 : Math.PI; } }
             if (input.jump && this.grounded && !this.dashInvincibility) { this.vy = this.jumpForce; this.grounded = false; playSound('jump'); }
@@ -356,7 +351,8 @@
             if (this.invincibility > 0) this.invincibility--; if (this.atkCooldown > 0) this.atkCooldown--; if (this.attackAnimTimer > 0) this.attackAnimTimer--;
             
             if (this.shieldTimer > 0) this.shieldTimer--;
-            if (this.blueFireHitDelay > 0) this.blueFireHitDelay--; // 불덩이 보스 다단히트 타이머 감소
+            // [신규 추가] 불덩이 보스 타격 쿨타임 감소
+            if (this.blueFireHitDelay > 0) this.blueFireHitDelay--;
 
             if (input.attack && this.atkCooldown <= 0) this.attack(); 
             if (input.ult && this.ultGauge >= this.maxUltGauge) this.ultimate();
@@ -379,11 +375,11 @@
             else if (this.type === 'E') { playSound('atk'); this.atkCooldown = 25; projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2 + (Math.random()*6 - 3), this.aimAngle, 'colt_base', this)); }
             else if (this.type === 'F') { playSound('atk'); this.atkCooldown = 22; hitboxes.push(new Hitbox(this, 85, 12, 'base', 1)); particles.push(new Particle(this, 0, 'water_slash', this.aimAngle)); }
             else if (this.type === 'G') { playSound('arrow'); this.atkCooldown = 12; let isLeft = Math.cos(this.aimAngle) < 0; let arcOffset = isLeft ? 0.2 : -0.2; projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle + arcOffset, 'archer_base', this)); }
-            // [신규] 불덩이 기본 공격: 화면에 팩맨이 없을 때만 발사
+            // [신규 추가] 불덩이 기본 공격: 팩맨 화염구 단발 발사
             else if (this.type === 'H') {
                 let hasPacman = projectiles.some(p => p.active && p.type === 'fireball_pacman');
                 if (!hasPacman) {
-                    playSound('fire'); 
+                    playSound('fire');
                     this.atkCooldown = 20;
                     projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'fireball_pacman', this));
                 }
@@ -398,17 +394,17 @@
             else if (this.type === 'E') { playSound('jump'); playSound('atk'); let isLeft = Math.cos(this.aimAngle) < 0; for (let i = 0; i < 5; i++) { let offset = isLeft ? (i * 40) : -(i * 40); projectiles.push(new Projectile(this.worldX + this.w/2 + offset, this.y + this.h/2 + (Math.random()*16 - 8), this.aimAngle, 'colt_ult', this)); } }
             else if (this.type === 'F') { playSound('jump'); playSound('fire'); if(this.grounded) { this.vy = -8; this.grounded = false; } projectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, this.aimAngle, 'hinokami_storm', this)); }
             else if (this.type === 'G') { playSound('jump'); playSound('arrow'); let isLeft = Math.cos(this.aimAngle) < 0; let centerX = this.worldX + (isLeft ? -200 : 200); for (let i = 0; i < 10; i++) { let startX = centerX + (Math.random() * 800 - 400); let startY = -Math.random() * 400 - 100; projectiles.push(new Projectile(startX, startY, Math.PI / 2, 'archer_ult', this)); } }
-            // [신규] 불덩이 궁극기: 거대 파란 불덩이 1.5배속 돌진
+            // [신규 추가] 불덩이 궁극기: 거대 파란 불꽃 돌진 (평소 1.5배속, 시간 연장)
             else if (this.type === 'H') {
                 playSound('jump'); playSound('fire');
                 this.dashInvincibility = true;
                 this.isUltDashing = true;
-                this.ultDashHitEnemies = []; // 일반 몹 중복 타격 방지용
-                this.dashTimer = 80; // 속도가 느린 만큼 돌진 시간 연장
-                let dashSpeed = this.speed * 1.5; // 평소의 1.5배 (약 9.75)
+                this.ultDashHitEnemies = [];
+                this.dashTimer = 80;
+                let dashSpeed = this.speed * 1.5;
                 this.vy = Math.sin(this.aimAngle) * dashSpeed;
                 this.vx = Math.cos(this.aimAngle) * dashSpeed;
-                this.blueFireHitDelay = 0; // 보스 다단히트 초기화
+                this.blueFireHitDelay = 0;
             }
         }
         takeDamage() { 
@@ -422,34 +418,26 @@
             if (this.invincibility > 0 && frameCount % 10 < 5) return;
             let drawX = this.worldX - cameraX; let isLeft = Math.cos(this.aimAngle) < 0; ctx.save(); ctx.translate(drawX + this.w/2, this.y + this.h/2); if (isLeft) ctx.scale(-1, 1);
             
-            if (this.type === 'A') { ctx.fillStyle = '#1a1a2e'; ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-30, -20); ctx.lineTo(-25, 0); ctx.lineTo(-35, 10); ctx.lineTo(-10, 10); ctx.fill(); ctx.fillStyle = '#2c3e50'; ctx.beginPath(); arc(0, 0, 20, 0, Math.PI*2); fill(); ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); arc(5, -2, 16, Math.PI*0.5, Math.PI*1.5); arc(-5, -2, 16, Math.PI*1.5, Math.PI*0.5); fill(); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.ellipse(4, -5, 4, 6, 0.3, 0, Math.PI*2); ctx.fill(); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(10, 5); ctx.rotate(Math.PI/2); ctx.translate(-10, -5); } ctx.fillStyle = '#fff'; ctx.fillRect(10, 5, 25, 4); ctx.fillStyle = '#e74c3c'; ctx.fillRect(10, 2, 4, 10); ctx.restore(); }
-            else if (this.type === 'B') { ctx.fillStyle = '#8e44ad'; ctx.beginPath(); arc(0, -5, 22, Math.PI, 0); fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); arc(0, 5, 18, 0, Math.PI*2); fill(); ctx.fillStyle = '#e74c3c'; ctx.fillRect(-20, -8, 40, 6); ctx.beginPath(); ctx.moveTo(-20, -5); ctx.lineTo(-35, -15); ctx.lineTo(-30, -5); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(2, -2, 4, 4); ctx.fillRect(10, -2, 4, 4); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(12, 10); ctx.rotate(Math.PI/1.5); ctx.translate(-12, -10); } ctx.fillStyle = '#aaa'; ctx.fillRect(12, 10, 25, 3); ctx.fillStyle = '#333'; ctx.fillRect(12, 5, 3, 13); ctx.restore(); }
-            else if (this.type === 'C') { ctx.fillStyle = '#2980b9'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-18, 20); ctx.lineTo(18, 20); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); arc(0, -5, 12, 0, Math.PI*2); fill(); ctx.fillStyle = '#34495e'; ctx.beginPath(); ctx.moveTo(-18, -10); ctx.lineTo(18, -10); ctx.lineTo(0, -35); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(12, 5); ctx.rotate(Math.PI/2); ctx.translate(-12, -5); } ctx.fillStyle = '#8b4513'; ctx.fillRect(10, -15, 4, 30); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); arc(12, -15, 7, 0, Math.PI*2); fill(); ctx.restore(); }
-            else if (this.type === 'D') { ctx.fillStyle = '#1e3799'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-18, 20); ctx.lineTo(18, 20); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); arc(0, -5, 12, 0, Math.PI*2); fill(); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(-18, -10); ctx.lineTo(18, -10); ctx.lineTo(0, -38); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(12, 5); ctx.rotate(Math.PI/2); ctx.translate(-12, -5); } ctx.fillStyle = '#784212'; ctx.fillRect(10, -15, 4, 30); ctx.fillStyle = '#8e44ad'; ctx.beginPath(); arc(12, -15, 7, 0, Math.PI*2); fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); arc(10, -17, 3, 0, Math.PI*2); fill(); ctx.restore(); }
-            else if (this.type === 'E') { ctx.fillStyle = '#2980b9'; ctx.beginPath(); ctx.moveTo(-15, -10); ctx.lineTo(-15, 20); ctx.lineTo(15, 20); ctx.lineTo(15, -10); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); arc(0, -5, 12, 0, Math.PI*2); fill(); ctx.fillStyle = '#c0392b'; ctx.beginPath(); arc(-2, -15, 10, 0, Math.PI*2); arc(8, -10, 8, 0, Math.PI*2); fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(15, 5); ctx.rotate(Math.PI/6); ctx.translate(-15, -5); } ctx.fillStyle = '#95a5a6'; ctx.fillRect(10, 0, 15, 6); ctx.fillRect(10, 6, 4, 8); ctx.restore(); }
-            else if (this.type === 'F') { ctx.fillStyle = '#16a085'; ctx.fillRect(-15, -8, 30, 28); ctx.fillStyle = '#000'; ctx.fillRect(-15, -8, 10, 10); ctx.fillRect(5, -8, 10, 10); ctx.fillRect(-5, 2, 10, 10); ctx.fillRect(-15, 12, 10, 8); ctx.fillRect(5, 12, 10, 8); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); arc(0, -8, 14, 0, Math.PI*2); fill(); ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(-10, -18); ctx.lineTo(-5, -15); ctx.lineTo(-8, -12); ctx.fill(); ctx.fillStyle = '#341f97'; ctx.beginPath(); arc(0, -15, 15, Math.PI, 0); fill(); ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(-18, -5); ctx.lineTo(-10, -10); ctx.fill(); ctx.beginPath(); ctx.moveTo(15, -15); ctx.lineTo(18, -5); ctx.lineTo(10, -10); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-5, -10, 3, 4); ctx.fillRect(3, -10, 3, 4); ctx.save(); let isAtk = this.attackAnimTimer > 0; ctx.translate(12, 8); if(isAtk) ctx.rotate(Math.PI/8); ctx.fillStyle = (input.ult && this.ultGauge >= this.maxUltGauge) ? '#ff3300' : '#111'; ctx.fillRect(0, -2, 35, 4); ctx.fillStyle = '#000'; ctx.beginPath(); arc(0, 0, 5, 0, Math.PI*2); fill(); ctx.fillStyle = '#c0392b'; ctx.fillRect(-8, -2, 8, 4); ctx.restore(); }
-            else if (this.type === 'G') { ctx.fillStyle = '#27ae60'; ctx.fillRect(-15, -10, 30, 30); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); arc(0, -10, 15, 0, Math.PI*2); fill(); ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(15, -15); ctx.lineTo(0, -35); ctx.fill(); ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(-10, -40); ctx.stroke(); ctx.fillStyle = '#000'; ctx.fillRect(-6, -12, 3, 3); ctx.fillRect(4, -12, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(15, 5); } else { ctx.translate(10, 5); } ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 3; ctx.beginPath(); arc(0, 0, 15, -Math.PI/2, Math.PI/2); ctx.stroke(); ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(this.attackAnimTimer > 0 ? -10 : 0, 0); ctx.lineTo(0, 15); ctx.stroke(); ctx.restore(); }
-            // [신규] 불덩이 디자인 (일반 및 궁극기)
+            if (this.type === 'A') { ctx.fillStyle = '#1a1a2e'; ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-30, -20); ctx.lineTo(-25, 0); ctx.lineTo(-35, 10); ctx.lineTo(-10, 10); ctx.fill(); ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.arc(5, -2, 16, Math.PI*0.5, Math.PI*1.5); ctx.arc(-5, -2, 16, Math.PI*1.5, Math.PI*0.5); ctx.fill(); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.ellipse(4, -5, 4, 6, 0.3, 0, Math.PI*2); ctx.fill(); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(10, 5); ctx.rotate(Math.PI/2); ctx.translate(-10, -5); } ctx.fillStyle = '#fff'; ctx.fillRect(10, 5, 25, 4); ctx.fillStyle = '#e74c3c'; ctx.fillRect(10, 2, 4, 10); ctx.restore(); }
+            else if (this.type === 'B') { ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.arc(0, -5, 22, Math.PI, 0); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, 5, 18, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#e74c3c'; ctx.fillRect(-20, -8, 40, 6); ctx.beginPath(); ctx.moveTo(-20, -5); ctx.lineTo(-35, -15); ctx.lineTo(-30, -5); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(2, -2, 4, 4); ctx.fillRect(10, -2, 4, 4); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(12, 10); ctx.rotate(Math.PI/1.5); ctx.translate(-12, -10); } ctx.fillStyle = '#aaa'; ctx.fillRect(12, 10, 25, 3); ctx.fillStyle = '#333'; ctx.fillRect(12, 5, 3, 13); ctx.restore(); }
+            else if (this.type === 'C') { ctx.fillStyle = '#2980b9'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-18, 20); ctx.lineTo(18, 20); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#34495e'; ctx.beginPath(); ctx.moveTo(-18, -10); ctx.lineTo(18, -10); ctx.lineTo(0, -35); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(12, 5); ctx.rotate(Math.PI/2); ctx.translate(-12, -5); } ctx.fillStyle = '#8b4513'; ctx.fillRect(10, -15, 4, 30); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(12, -15, 7, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
+            else if (this.type === 'D') { ctx.fillStyle = '#1e3799'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-18, 20); ctx.lineTo(18, 20); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(-18, -10); ctx.lineTo(18, -10); ctx.lineTo(0, -38); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(12, 5); ctx.rotate(Math.PI/2); ctx.translate(-12, -5); } ctx.fillStyle = '#784212'; ctx.fillRect(10, -15, 4, 30); ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.arc(12, -15, 7, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(10, -17, 3, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
+            else if (this.type === 'E') { ctx.fillStyle = '#2980b9'; ctx.beginPath(); ctx.moveTo(-15, -10); ctx.lineTo(-15, 20); ctx.lineTo(15, 20); ctx.lineTo(15, -10); ctx.fill(); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(-2, -15, 10, 0, Math.PI*2); ctx.arc(8, -10, 8, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-4, -7, 3, 3); ctx.fillRect(3, -7, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(15, 5); ctx.rotate(Math.PI/6); ctx.translate(-15, -5); } ctx.fillStyle = '#95a5a6'; ctx.fillRect(10, 0, 15, 6); ctx.fillRect(10, 6, 4, 8); ctx.restore(); }
+            else if (this.type === 'F') { ctx.fillStyle = '#16a085'; ctx.fillRect(-15, -8, 30, 28); ctx.fillStyle = '#000'; ctx.fillRect(-15, -8, 10, 10); ctx.fillRect(5, -8, 10, 10); ctx.fillRect(-5, 2, 10, 10); ctx.fillRect(-15, 12, 10, 8); ctx.fillRect(5, 12, 10, 8); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -8, 14, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(-10, -18); ctx.lineTo(-5, -15); ctx.lineTo(-8, -12); ctx.fill(); ctx.fillStyle = '#341f97'; ctx.beginPath(); ctx.arc(0, -15, 15, Math.PI, 0); ctx.fill(); ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(-18, -5); ctx.lineTo(-10, -10); ctx.fill(); ctx.beginPath(); ctx.moveTo(15, -15); ctx.lineTo(18, -5); ctx.lineTo(10, -10); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-5, -10, 3, 4); ctx.fillRect(3, -10, 3, 4); ctx.save(); let isAtk = this.attackAnimTimer > 0; ctx.translate(12, 8); if(isAtk) ctx.rotate(Math.PI/8); ctx.fillStyle = (input.ult && this.ultGauge >= this.maxUltGauge) ? '#ff3300' : '#111'; ctx.fillRect(0, -2, 35, 4); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#c0392b'; ctx.fillRect(-8, -2, 8, 4); ctx.restore(); }
+            else if (this.type === 'G') { ctx.fillStyle = '#27ae60'; ctx.fillRect(-15, -10, 30, 30); ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.arc(0, -10, 15, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(15, -15); ctx.lineTo(0, -35); ctx.fill(); ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(-10, -40); ctx.stroke(); ctx.fillStyle = '#000'; ctx.fillRect(-6, -12, 3, 3); ctx.fillRect(4, -12, 3, 3); ctx.save(); if(this.attackAnimTimer > 0) { ctx.translate(15, 5); } else { ctx.translate(10, 5); } ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 15, -Math.PI/2, Math.PI/2); ctx.stroke(); ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(this.attackAnimTimer > 0 ? -10 : 0, 0); ctx.lineTo(0, 15); ctx.stroke(); ctx.restore(); }
+            // [신규 추가] 불덩이 외형 디자인
             else if (this.type === 'H') {
                 if (this.isUltDashing) {
-                    // 거대 파란 불덩이 (크기 2배 이상)
-                    ctx.fillStyle = '#00aaff'; // 파란색
-                    ctx.beginPath(); arc(0, 0, 45, 0, Math.PI*2); fill();
-                    ctx.fillStyle = '#e0ffff'; // 연한 파란색 코어
-                    ctx.beginPath(); arc(0, 0, 25, 0, Math.PI*2); fill();
-                    ctx.fillStyle = '#000'; // 눈
-                    ctx.beginPath(); arc(15, -15, 6, 0, Math.PI*2); fill();
+                    ctx.fillStyle = '#00aaff'; ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#e0ffff'; ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(15, -15, 6, 0, Math.PI*2); ctx.fill();
                 } else {
-                    // 일반 작은 불덩이
-                    ctx.fillStyle = '#ff4500'; // 빨간/주황색
-                    ctx.beginPath(); arc(0, 0, 20, 0, Math.PI*2); fill();
-                    ctx.fillStyle = '#ffcc00'; // 노란색 코어
-                    ctx.beginPath(); arc(0, 0, 10, 0, Math.PI*2); fill();
-                    ctx.fillStyle = '#000'; // 귀여운 눈
-                    ctx.beginPath(); arc(5, -5, 3, 0, Math.PI*2); fill();
+                    ctx.fillStyle = '#ff4500'; ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(5, -5, 3, 0, Math.PI*2); ctx.fill();
                 }
             }
-
+            
             if (this.shieldTimer > 0) {
                 if(isLeft) ctx.scale(-1, 1); 
                 let alpha = (this.shieldTimer / 300) * 0.8; 
@@ -457,11 +445,11 @@
                 ctx.rotate(frameCount * 0.15); 
                 ctx.globalAlpha = alpha;
                 ctx.fillStyle = '#00BFFF'; 
-                ctx.beginPath(); arc(0, 0, 65, 0, Math.PI*2); fill();
+                ctx.beginPath(); ctx.arc(0, 0, 65, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = '#87CEFA'; 
-                ctx.beginPath(); arc(20, 0, 45, 0, Math.PI*2); fill();
+                ctx.beginPath(); ctx.arc(20, 0, 45, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = '#E0FFFF'; 
-                ctx.beginPath(); arc(0, 0, 35, 0, Math.PI*2); fill();
+                ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI*2); ctx.fill();
                 ctx.restore();
             }
 
@@ -480,8 +468,8 @@
         update() { this.duration--; this.tickTimer++; if (this.duration <= 0) this.active = false; }
         draw(ctx) {
             let screenX = this.worldX - cameraX; let alpha = (this.duration / this.maxDuration);
-            if(this.type === 'fire_dot') { ctx.fillStyle = `rgba(255, 69, 0, ${alpha * 0.6})`; ctx.beginPath(); arc(screenX, this.y, this.radius, 0, Math.PI*2); fill(); ctx.fillStyle = `rgba(255, 215, 0, ${alpha * 0.4})`; ctx.beginPath(); arc(screenX, this.y, this.radius * 0.7, 0, Math.PI*2); fill(); if(frameCount % 3 === 0) particles.push(new Particle(this.worldX + (Math.random()-0.5)*this.radius*1.2, this.y + (Math.random()-0.5)*this.radius*1.2, 'exp', 0)); } 
-            else { ctx.fillStyle = `rgba(100, 200, 255, ${alpha * 0.7})`; ctx.beginPath(); arc(screenX, this.y, this.radius, 0, Math.PI*2); fill(); ctx.fillStyle = `rgba(255, 255, 200, ${alpha * 0.5})`; ctx.beginPath(); arc(screenX, this.y, this.radius * 0.7, 0, Math.PI*2); fill(); }
+            if(this.type === 'fire_dot') { ctx.fillStyle = `rgba(255, 69, 0, ${alpha * 0.6})`; ctx.beginPath(); ctx.arc(screenX, this.y, this.radius, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = `rgba(255, 215, 0, ${alpha * 0.4})`; ctx.beginPath(); ctx.arc(screenX, this.y, this.radius * 0.7, 0, Math.PI*2); ctx.fill(); if(frameCount % 3 === 0) particles.push(new Particle(this.worldX + (Math.random()-0.5)*this.radius*1.2, this.y + (Math.random()-0.5)*this.radius*1.2, 'exp', 0)); } 
+            else { ctx.fillStyle = `rgba(100, 200, 255, ${alpha * 0.7})`; ctx.beginPath(); ctx.arc(screenX, this.y, this.radius, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = `rgba(255, 255, 200, ${alpha * 0.5})`; ctx.beginPath(); ctx.arc(screenX, this.y, this.radius * 0.7, 0, Math.PI*2); ctx.fill(); }
         }
     }
 
@@ -489,13 +477,13 @@
         constructor() { let calculatedSize = 80 * Math.pow(CONFIG.difficultyMultiplier, stage - 1), maxSize = canvas.height * 0.5; this.w = Math.min(maxSize, calculatedSize); this.h = this.w; this.worldX = cameraX + canvas.width + 100; this.y = 50; this.maxHp = Math.floor(CONFIG.baseBossHp * Math.pow(CONFIG.difficultyMultiplier, stage - 1)); this.hp = this.maxHp; this.active = true; this.vx = 0; this.vy = 0.5 * Math.pow(CONFIG.difficultyMultiplier, stage - 1); this.speed = 1.0 * Math.pow(CONFIG.difficultyMultiplier, stage - 1); this.attackTimer = 0; this.isHit = 0; this.facingRight = false; bossActive = true; }
         update() { this.facingRight = player.worldX > this.worldX; let targetX = cameraX + canvas.width - this.w - 50; if (this.worldX > targetX) this.worldX -= this.speed; this.y += this.vy; if (this.y < 50 || this.y > canvas.height - this.h - 50) this.vy *= -1; if (this.isHit > 0) this.isHit--; this.attackTimer++; let fireRate = Math.max(30, 150 * Math.pow(1 / CONFIG.difficultyMultiplier, stage - 1)); if (this.attackTimer > fireRate) { this.attackTimer = 0; playSound('boss_hit'); let baseAngle = this.facingRight ? 0 : Math.PI, spread = 0.4, bulletCount = Math.floor(CONFIG.baseBossBullets * Math.pow(CONFIG.difficultyMultiplier, stage - 1)), startOffset = -(bulletCount - 1) / 2 * spread; for (let i = 0; i < bulletCount; i++) { let angleOffset = startOffset + (i * spread); enemyProjectiles.push(new Projectile(this.worldX + this.w/2, this.y + this.h/2, baseAngle + angleOffset, 'boss_atk', null)); } } }
         takeDamage(dmg) { this.hp -= dmg; this.isHit = 5; playSound('boss_hit'); if (this.hp <= 0) { this.active = false; bossActive = false; score += 200; enemyProjectiles = []; stageKillCount = 0; playSound('stage_clear'); for(let i=0; i<30; i++) particles.push(new Particle(this.worldX+this.w/2, this.y+this.h/2, 'exp', 0)); gameState = 'STAGE_BREAK'; breakTimer = 180; ui.stageAlert.style.color = '#00ff00'; ui.stageAlert.style.opacity = 1; player.vx = 0; player.vy = 0; player.dashInvincibility = false; player.isUltDashing = false; player.dashTimer = 0; } }
-        draw(ctx) { let screenX = this.worldX - cameraX; ctx.save(); ctx.translate(screenX + this.w/2, this.y + this.h/2); ctx.scale(this.facingRight ? -1 : 1, 1); if (imgBoss.complete && imgBoss.naturalWidth > 0) { ctx.globalAlpha = this.isHit > 0 ? 0.5 : 1; ctx.drawImage(imgBoss, -this.w/2, -this.h/2, this.w, this.h); } else { ctx.fillStyle = this.isHit > 0 ? '#fff' : '#c0392b'; ctx.beginPath(); ctx.ellipse(0, 0, this.w/2, this.h/2, 0, 0, Math.PI*2); fill(); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(-30, -this.h/2); ctx.lineTo(-40, -this.h/2 - 30); ctx.lineTo(-15, -this.h/2 - 10); ctx.lineTo(0, -this.h/2 - 40); ctx.lineTo(15, -this.h/2 - 10); ctx.lineTo(40, -this.h/2 - 30); ctx.lineTo(30, -this.h/2); fill(); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(-25, -10); ctx.lineTo(-5, 0); ctx.lineTo(-25, 10); fill(); ctx.beginPath(); ctx.moveTo(25, -10); ctx.lineTo(5, 0); ctx.lineTo(25, 10); fill(); ctx.fillStyle = '#ff0000'; ctx.beginPath(); arc(-15, 0, 5, 0, Math.PI*2); arc(15, 0, 5, 0, Math.PI*2); fill(); } ctx.scale(this.facingRight ? -1 : 1, 1); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w, 10); ctx.fillStyle = '#ff3333'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w * (this.hp / this.maxHp), 10); ctx.restore(); }
+        draw(ctx) { let screenX = this.worldX - cameraX; ctx.save(); ctx.translate(screenX + this.w/2, this.y + this.h/2); ctx.scale(this.facingRight ? -1 : 1, 1); if (imgBoss.complete && imgBoss.naturalWidth > 0) { ctx.globalAlpha = this.isHit > 0 ? 0.5 : 1; ctx.drawImage(imgBoss, -this.w/2, -this.h/2, this.w, this.h); } else { ctx.fillStyle = this.isHit > 0 ? '#fff' : '#c0392b'; ctx.beginPath(); ctx.ellipse(0, 0, this.w/2, this.h/2, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.moveTo(-30, -this.h/2); ctx.lineTo(-40, -this.h/2 - 30); ctx.lineTo(-15, -this.h/2 - 10); ctx.lineTo(0, -this.h/2 - 40); ctx.lineTo(15, -this.h/2 - 10); ctx.lineTo(40, -this.h/2 - 30); ctx.lineTo(30, -this.h/2); ctx.fill(); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(-25, -10); ctx.lineTo(-5, 0); ctx.lineTo(-25, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(25, -10); ctx.lineTo(5, 0); ctx.lineTo(25, 10); ctx.fill(); ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(-15, 0, 5, 0, Math.PI*2); ctx.arc(15, 0, 5, 0, Math.PI*2); ctx.fill(); } ctx.scale(this.facingRight ? -1 : 1, 1); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w, 10); ctx.fillStyle = '#ff3333'; ctx.fillRect(-this.w/2, -this.h/2 - 20, this.w * (this.hp / this.maxHp), 10); ctx.restore(); }
     }
 
     class Projectile {
         constructor(x, y, angle, type, owner) {
             this.worldX = x; this.y = y; this.angle = angle; this.type = type; this.owner = owner; this.startX = x; 
-            // [신규] 불덩이 팩맨 투사체에 관통 속성 추가
+            // [신규 추가] 불팩맨(fireball_pacman) 관통 속성 부여
             this.piercing = (type === 'colt_ult' || type === 'archer_ult' || type === 'fireball_pacman'); 
             this.hitEnemies = []; 
             this.gravity = 0; 
@@ -512,12 +500,11 @@
             if(type === 'hinokami_storm') speed = 18;
             if(type === 'archer_base') { speed = 16; this.gravity = 0.6; } 
             if(type === 'archer_ult') speed = 25;
-            // [신규] 불팩맨 이동속도: 천천히 캐릭터처럼 이동
-            if(type === 'fireball_pacman') speed = 4.5; 
+            // [신규 추가] 불팩맨 속도 (캐릭터처럼 천천히)
+            if(type === 'fireball_pacman') speed = 4.5;
 
             this.vx = Math.cos(angle) * speed; 
             this.vy = Math.sin(angle) * speed;
-            
             this.w = 35; 
             if(type === 'ult_A') this.w = 50; 
             if(type === 'boss_atk') this.w = 20; 
@@ -530,10 +517,10 @@
             if(type === 'hinokami_storm') this.w = 45;
             if(type === 'archer_base') this.w = 30;
             if(type === 'archer_ult') this.w = 40;
-            // [신규] 불팩맨 크기: 보스 발사체와 동일하게
+            // [신규 추가] 불팩맨 크기 (보스 발사체 크기와 동일)
             if(type === 'fireball_pacman') this.w = 20;
 
-            this.active = true;
+            this.h = this.w; this.active = true;
         }
         update() {
             if (this.type === 'archer_base') {
@@ -543,11 +530,11 @@
 
             this.worldX += this.vx; this.y += this.vy;
 
-            // [신규] 팩맨 투사체는 화면 가장자리에서 정확히 소멸되도록 보정
+            // [신규 추가] 불팩맨 화면 끝 도달 시 소멸 로직
             if (this.type === 'fireball_pacman') {
                 let sx = this.worldX - cameraX;
                 if (sx < 0 || sx > canvas.width) {
-                    this.active = false; 
+                    this.active = false;
                 }
             }
 
@@ -572,40 +559,44 @@
         }
         draw(ctx) {
             let screenX = this.worldX - cameraX; ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle);
-            if (this.type === 'boss_atk') { ctx.fillStyle = '#ff0000'; ctx.beginPath(); arc(0, 0, this.w/2, 0, Math.PI*2); fill(); ctx.fillStyle = '#ff9900'; ctx.beginPath(); arc(0, 0, this.w/4, 0, Math.PI*2); fill(); } else if (this.type === 'meteor') { ctx.fillStyle = '#e67e22'; ctx.beginPath(); arc(0, 0, this.w/2, 0, Math.PI*2); fill(); ctx.fillStyle = '#d35400'; ctx.beginPath(); arc(0, 0, this.w/3, 0, Math.PI*2); fill(); ctx.fillStyle = 'rgba(230, 126, 34, 0.5)'; ctx.beginPath(); ctx.moveTo(0,-this.w/2); ctx.lineTo(-this.w, 0); ctx.lineTo(0,this.w/2); fill(); } else if (this.type === 'sun_demise') { ctx.fillStyle = '#ff3300'; ctx.beginPath(); arc(0, 0, this.w/2, 0, Math.PI*2); fill(); ctx.fillStyle = '#ffcc00'; ctx.beginPath(); arc(0, 0, this.w/2.5, 0, Math.PI*2); fill(); } 
+            if (this.type === 'boss_atk') { ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ff9900'; ctx.beginPath(); ctx.arc(0, 0, this.w/4, 0, Math.PI*2); ctx.fill(); } else if (this.type === 'meteor') { ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#d35400'; ctx.beginPath(); ctx.arc(0, 0, this.w/3, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(230, 126, 34, 0.5)'; ctx.beginPath(); ctx.moveTo(0,-this.w/2); ctx.lineTo(-this.w, 0); ctx.lineTo(0,this.w/2); ctx.fill(); } else if (this.type === 'sun_demise') { ctx.fillStyle = '#ff3300'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(0, 0, this.w/2.5, 0, Math.PI*2); ctx.fill(); } 
             else if (this.type === 'lightning' || this.type === 'ult_lightning') { let tailLen = (this.type === 'lightning') ? 150 : 250; ctx.strokeStyle = '#ffd700'; ctx.lineWidth = (this.type === 'lightning') ? 4 : 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, 0); let segs = 5, segW = tailLen / segs, zig = (this.type === 'lightning') ? 10 : 15; for(let i=1; i<=segs; i++) { let oy = (i % 2 === 0) ? zig : -zig; if(i === segs) oy = 0; ctx.lineTo(-segW * i, oy); } ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.lineWidth = (this.type === 'lightning') ? 1.5 : 2.5; ctx.stroke(); if(this.type === 'ult_lightning') { ctx.strokeStyle = 'rgba(142, 68, 173, 0.5)'; ctx.lineWidth = 15; ctx.stroke(); } }
-            else if (this.type === 'colt_base' || this.type === 'colt_ult') { ctx.fillStyle = this.type === 'colt_ult' ? '#ff3300' : '#f1c40f'; ctx.beginPath(); arc(0, 0, this.w/2, this.w/4, 0, Math.PI*2); fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); arc(this.w/4, -this.w/8, this.w/6, this.w/8, 0, Math.PI*2); fill(); }
-            else if (this.type === 'hinokami_storm') { ctx.rotate(frameCount * 0.2); ctx.fillStyle = '#ff4500'; ctx.beginPath(); arc(0, 0, this.w/2, 0, Math.PI*2); fill(); ctx.fillStyle = '#ff8c00'; ctx.beginPath(); arc(this.w/4, 0, this.w/4, 0, Math.PI*2); fill(); ctx.fillStyle = '#ffd700'; ctx.beginPath(); arc(0, 0, this.w/5, 0, Math.PI*2); fill(); }
-            else if (this.type === 'archer_base' || this.type === 'archer_ult') { ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-this.w/2, 0); ctx.lineTo(this.w/2, 0); ctx.stroke(); ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.moveTo(this.w/2, 0); ctx.lineTo(this.w/2 - 8, -5); ctx.lineTo(this.w/2 - 8, 5); ctx.fill(); ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-this.w/2, 0); ctx.lineTo(-this.w/2 + 5, -5); ctx.moveTo(-this.w/2, 0); ctx.lineTo(-this.w/2 + 5, 5); ctx.stroke(); }
-            // [신규] 불팩맨 디자인 (입 뻐끔거림)
+            else if (this.type === 'colt_base' || this.type === 'colt_ult') { ctx.fillStyle = this.type === 'colt_ult' ? '#ff3300' : '#f1c40f'; ctx.beginPath(); ctx.ellipse(0, 0, this.w/2, this.w/4, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(this.w/4, -this.w/8, this.w/6, this.w/8, 0, 0, Math.PI*2); ctx.fill(); }
+            else if (this.type === 'hinokami_storm') { ctx.rotate(frameCount * 0.2); ctx.fillStyle = '#ff4500'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ff8c00'; ctx.beginPath(); ctx.arc(this.w/4, 0, this.w/4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 0, this.w/5, 0, Math.PI*2); ctx.fill(); }
+            else if (this.type === 'archer_base' || this.type === 'archer_ult') { 
+                ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-this.w/2, 0); ctx.lineTo(this.w/2, 0); ctx.stroke(); 
+                ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.moveTo(this.w/2, 0); ctx.lineTo(this.w/2 - 8, -5); ctx.lineTo(this.w/2 - 8, 5); ctx.fill(); 
+                ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-this.w/2, 0); ctx.lineTo(-this.w/2 + 5, -5); ctx.moveTo(-this.w/2, 0); ctx.lineTo(-this.w/2 + 5, 5); ctx.stroke(); 
+            }
+            // [신규 추가] 불팩맨 렌더링 (입 벌리는 애니메이션)
             else if (this.type === 'fireball_pacman') {
-                let mouthOpen = Math.abs(Math.sin(frameCount * 0.15)) * 0.7; // 입 벌리는 각도 계산
+                let mouthOpen = Math.abs(Math.sin(frameCount * 0.15)) * 0.7;
                 ctx.fillStyle = '#ff4500';
                 ctx.beginPath();
                 ctx.arc(0, 0, this.w/2, mouthOpen, Math.PI*2 - mouthOpen);
                 ctx.lineTo(0,0);
                 ctx.fill();
             }
-            else { ctx.strokeStyle = this.type === 'ult_A' ? '#ff00ff' : '#00ffff'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); arc(0, 0, this.w/2, -Math.PI/2.5, Math.PI/2.5, false); ctx.stroke(); } ctx.restore();
+            else { ctx.strokeStyle = this.type === 'ult_A' ? '#ff00ff' : '#00ffff'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, 0, this.w/2, -Math.PI/2.5, Math.PI/2.5, false); ctx.stroke(); } ctx.restore();
         }
     }
 
     class Enemy {
         constructor() { let baseSpeed = (0.8 + Math.random() * 0.4) * Math.pow(CONFIG.difficultyMultiplier, stage - 1), rand = Math.random(); if (stage === 1) this.type = 0; else if (stage === 2) this.type = rand < 0.7 ? 0 : 2; else this.type = rand < 0.4 ? 0 : (rand < 0.7 ? 2 : 1); this.worldX = cameraX + canvas.width + 50; this.active = true; if (this.type === 0) { this.w = 35; this.h = 30; this.y = canvas.height - 45 - this.h; this.vx = -baseSpeed; } else if (this.type === 1) { this.w = 30; this.h = 20; this.y = canvas.height - 130 - Math.random() * 50; this.baseY = this.y; this.vx = -(baseSpeed + 0.5); } else { this.w = 35; this.h = 25; this.y = canvas.height - 45 - this.h; this.vx = -(baseSpeed + 1); } }
         update() { this.worldX += this.vx; if (this.type === 1) this.y = this.baseY + Math.sin(frameCount * 0.05) * 40; if (this.worldX < cameraX - 100) this.active = false; }
-        draw(ctx) { let screenX = this.worldX - cameraX; ctx.save(); ctx.translate(screenX + this.w/2, this.y + this.h/2); if (this.type === 0) { ctx.fillStyle = '#8e44ad'; ctx.beginPath(); arc(0, 0, 17, 15, 0, Math.PI*2); fill(); ctx.fillStyle = 'white'; ctx.beginPath(); arc(-6, -3, 4, 0, Math.PI*2); arc(6, -3, 4, 0, Math.PI*2); fill(); ctx.fillStyle = 'black'; ctx.beginPath(); arc(-6, -3, 2, 0, Math.PI*2); arc(6, -3, 2, 0, Math.PI*2); fill(); } else if (this.type === 1) { ctx.fillStyle = '#2c3e50'; ctx.beginPath(); arc(0, 0, 15, 10, 0, Math.PI*2); fill(); ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-25, -15); ctx.lineTo(-10, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(25, -15); ctx.lineTo(10, 10); ctx.fill(); ctx.fillStyle = 'red'; ctx.fillRect(-5, -3, 3, 3); ctx.fillRect(2, -3, 3, 3); } else { ctx.fillStyle = '#e67e22'; ctx.beginPath(); arc(0, 10, 15, Math.PI, 0); fill(); ctx.fillStyle = '#d35400'; ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-5, -20); ctx.lineTo(0, -5); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(5, -20); ctx.lineTo(10, -5); ctx.fill(); } ctx.restore(); }
+        draw(ctx) { let screenX = this.worldX - cameraX; ctx.save(); ctx.translate(screenX + this.w/2, this.y + this.h/2); if (this.type === 0) { ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.ellipse(0, 0, 17, 15, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-6, -3, 4, 0, Math.PI*2); ctx.arc(6, -3, 4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(-6, -3, 2, 0, Math.PI*2); ctx.arc(6, -3, 2, 0, Math.PI*2); ctx.fill(); } else if (this.type === 1) { ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.ellipse(0, 0, 15, 10, 0, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-25, -15); ctx.lineTo(-10, 10); ctx.fill(); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(25, -15); ctx.lineTo(10, 10); ctx.fill(); ctx.fillStyle = 'red'; ctx.fillRect(-5, -3, 3, 3); ctx.fillRect(2, -3, 3, 3); } else { ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(0, 10, 15, Math.PI, 0); ctx.fill(); ctx.fillStyle = '#d35400'; ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-5, -20); ctx.lineTo(0, -5); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(5, -20); ctx.lineTo(10, -5); ctx.fill(); } ctx.restore(); }
     }
 
     class Item {
         constructor(x, y) { this.worldX = x; this.y = y; this.w = 20; this.h = 20; this.vy = -6; this.gravity = 0.5; this.active = true; }
         update() { this.vy += this.gravity; this.y += this.vy; const groundY = canvas.height - 45; if (this.y + this.h >= groundY) { this.y = groundY - this.h; this.vy = -this.vy * 0.4; } if (this.worldX < cameraX - 100) this.active = false; }
-        draw(ctx) { let screenX = this.worldX - cameraX; ctx.fillStyle = '#e74c3c'; ctx.beginPath(); arc(screenX + 10, this.y + 10, 10, 0, Math.PI*2); fill(); ctx.fillStyle = '#27ae60'; ctx.fillRect(screenX + 8, this.y - 3, 4, 6); }
+        draw(ctx) { let screenX = this.worldX - cameraX; ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(screenX + 10, this.y + 10, 10, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#27ae60'; ctx.fillRect(screenX + 8, this.y - 3, 4, 6); }
     }
 
     class Particle {
         constructor(xOrOwner, y, type, angle) { if (typeof xOrOwner === 'object' && xOrOwner !== null) { this.owner = xOrOwner; this.worldX = 0; this.y = 0; } else { this.owner = null; this.worldX = xOrOwner; this.y = y; } this.type = type; this.angle = angle; this.life = type === 'slash' || type === 'water_slash' ? 15 : (type === 'afterimage' ? 20 : 15); this.maxLife = this.life; this.vx = (Math.random() - 0.5) * 5; this.vy = (Math.random() - 0.5) * 5; if(type === 'lightning_exp') { this.vx *= 1.5; this.vy *= 1.5; this.life = 20; this.maxLife = 20; } }
         update() { if (this.owner) { let dist = this.type.includes('slash') ? 25 : 0; this.worldX = this.owner.worldX + this.owner.w/2 + Math.cos(this.angle)*dist; this.y = this.owner.y + this.owner.h/2 + Math.sin(this.angle)*dist; } else { this.worldX += this.vx; this.y += this.vy; } this.life--; }
-        draw(ctx) { let screenX = this.worldX - cameraX; ctx.globalAlpha = this.life / this.maxLife; if (this.type === 'slash') { ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle); ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); arc(0, 0, 50, -Math.PI/3.75, Math.PI/3.75); ctx.stroke(); ctx.restore(); } else if (this.type === 'water_slash') { ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle); ctx.strokeStyle = `rgba(30, 144, 255, ${this.life/this.maxLife})`; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.beginPath(); arc(0, 0, 60, -Math.PI/3, Math.PI/3); ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); } else if (this.type === 'afterimage') { ctx.save(); ctx.translate(screenX + 20, this.y + 20); if (Math.cos(this.angle) < 0) ctx.scale(-1, 1); ctx.globalAlpha = (this.life / this.maxLife) * 0.6; ctx.fillStyle = '#ff4b2b'; ctx.beginPath(); arc(0, -5, 22, 0, Math.PI*2); fill(); ctx.restore(); } else if (this.type === 'lightning_exp') { let randCol = Math.random(); ctx.fillStyle = randCol < 0.7 ? '#ffd700' : '#fff'; ctx.beginPath(); arc(screenX, this.y, 12 * ctx.globalAlpha, 0, Math.PI*2); fill(); ctx.fillStyle = '#8e44ad'; ctx.beginPath(); arc(screenX + (Math.random()-0.5)*10, this.y + (Math.random()-0.5)*10, 4 * ctx.globalAlpha, 0, Math.PI*2); fill(); } else { ctx.fillStyle = '#ffaa00'; ctx.beginPath(); arc(screenX, this.y, 10 * ctx.globalAlpha, 0, Math.PI*2); fill(); } ctx.globalAlpha = 1.0; }
+        draw(ctx) { let screenX = this.worldX - cameraX; ctx.globalAlpha = this.life / this.maxLife; if (this.type === 'slash') { ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle); ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, 0, 50, -Math.PI/3.75, Math.PI/3.75); ctx.stroke(); ctx.restore(); } else if (this.type === 'water_slash') { ctx.save(); ctx.translate(screenX, this.y); ctx.rotate(this.angle); ctx.strokeStyle = `rgba(30, 144, 255, ${this.life/this.maxLife})`; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(0, 0, 60, -Math.PI/3, Math.PI/3); ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); } else if (this.type === 'afterimage') { ctx.save(); ctx.translate(screenX + 20, this.y + 20); if (Math.cos(this.angle) < 0) ctx.scale(-1, 1); ctx.globalAlpha = (this.life / this.maxLife) * 0.6; ctx.fillStyle = '#ff4b2b'; ctx.beginPath(); ctx.arc(0, -5, 22, 0, Math.PI*2); ctx.fill(); ctx.restore(); } else if (this.type === 'lightning_exp') { let randCol = Math.random(); ctx.fillStyle = randCol < 0.7 ? '#ffd700' : '#fff'; ctx.beginPath(); ctx.arc(screenX, this.y, 12 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.arc(screenX + (Math.random()-0.5)*10, this.y + (Math.random()-0.5)*10, 4 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill(); } else { ctx.fillStyle = '#ffaa00'; ctx.beginPath(); ctx.arc(screenX, this.y, 10 * ctx.globalAlpha, 0, Math.PI*2); ctx.fill(); } ctx.globalAlpha = 1.0; }
     }
 
     let projectiles = [], enemyProjectiles = [], hitboxes = [], enemies = [], items = [], particles = [], boss = null, player = null;
@@ -643,22 +634,16 @@
 
         projectiles.forEach(p => { enemies.forEach(e => { if (p.active && e.active && isCollide(p, e)) { if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning' || p.type === 'hinokami_storm') { p.explode(); } else { if (p.piercing) { if (!p.hitEnemies.includes(e)) { p.hitEnemies.push(e); killEnemy(e); } } else { killEnemy(e); p.active = false; } } } }); if (p.active && bossActive && boss.active && isCollide(p, boss)) { if (p.type === 'meteor' || p.type === 'sun_demise' || p.type === 'lightning' || p.type === 'ult_lightning' || p.type === 'hinokami_storm') { p.explode(); } else { if (p.piercing) { if (!p.hitEnemies.includes(boss)) { p.hitEnemies.push(boss); boss.takeDamage(1); } } else { boss.takeDamage(1); p.active = false; } } } });
         
-        // [수정/검증] 불덩이(H)와 켄지(B)의 궁극기 돌진 분기 처리 유지
+        // [신규 추가] 불덩이 궁극기와 켄지 궁극기의 보스 타격 분리
         if (player.isUltDashing) { 
-            enemies.forEach(e => { 
-                if (e.active && isCollide(player, e) && !player.ultDashHitEnemies.includes(e)) { 
-                    player.ultDashHitEnemies.push(e); killEnemy(e); 
-                } 
-            }); 
-            if (bossActive && boss.active && isCollide(player, boss)) { 
+            enemies.forEach(e => { if (e.active && isCollide(player, e) && !player.ultDashHitEnemies.includes(e)) { player.ultDashHitEnemies.push(e); killEnemy(e); } }); 
+            if (bossActive && boss.active && isCollide(player, boss)) {
                 if (player.type === 'H') {
-                    // 불덩이(H)는 관통 중 0.5초(30프레임) 마다 다단히트
                     if (player.blueFireHitDelay <= 0) {
-                        boss.takeDamage(1); 
-                        player.blueFireHitDelay = 30; 
+                        boss.takeDamage(1);
+                        player.blueFireHitDelay = 30; // 0.5초(30프레임) 쿨타임
                     }
                 } else if (player.type === 'B' && !player.ultDashHitEnemies.includes(boss)) {
-                    // 켄지(B)는 1회만 타격
                     player.ultDashHitEnemies.push(boss); boss.takeDamage(CONFIG.kenjiUltDamage); 
                 }
             } 
@@ -671,7 +656,7 @@
         
         enemyProjectiles.forEach(ep => { 
             if (ep.active) { 
-                // [신규] 불팩맨이 적 발사체를 먹어치움
+                // [신규 추가] 불팩맨이 적 투사체를 먹어치움 (보호막 판정 이전)
                 let pacmanEaten = false;
                 projectiles.forEach(p => {
                     if (p.active && p.type === 'fireball_pacman' && isCollide(p, ep)) {
@@ -680,7 +665,7 @@
                         for(let i=0; i<3; i++) particles.push(new Particle(ep.worldX, ep.y, 'exp', 0));
                     }
                 });
-                if (pacmanEaten) return; // 먹혔으면 이후 피격/실드 판정 스킵
+                if (pacmanEaten) return;
 
                 let blocked = false;
                 if (player.shieldTimer > 0) {
@@ -734,7 +719,7 @@
     };
     bindChar('btn-char-a', 'A'); bindChar('btn-char-b', 'B'); bindChar('btn-char-c', 'C'); bindChar('btn-char-d', 'D'); bindChar('btn-char-e', 'E'); bindChar('btn-char-f', 'F'); 
     bindChar('btn-char-g', 'G'); 
-    bindChar('btn-char-h', 'H'); // 불덩이 바인딩
+    bindChar('btn-char-h', 'H'); // [신규 추가] 불덩이 바인딩
 </script>
 </body>
 </html>
